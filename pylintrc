@@ -1,0 +1,19 @@
+[BASIC]
+const-naming-style = snake_case
+
+[DESIGN]
+max-attributes = 10
+
+[FORMAT]
+indent-string = '    '
+max-line-length = 160
+
+[MESSAGES CONTROL]
+disable =
+	consider-using-f-string,
+	duplicate-code,
+	missing-docstring,
+	too-few-public-methods,
+
+[REPORTS]
+score = no

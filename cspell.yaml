@@ -1,0 +1,21 @@
+---
+
+# cspell:words pycache venv
+
+files:
+  - "*"
+
+ignorePaths:
+  - ".git/**"
+  - ".venv-automation/**"
+  - ".venv/**"
+  - "**/__pycache__/**"
+  - "**/*.egg-info/**"
+  - "Artifacts/**"
+  - "Sources/*/build/**"
+  - "Sources/*/dist/**"
+
+words:
+  - benjaminhamon
+  - bhamon
+  - hamon
