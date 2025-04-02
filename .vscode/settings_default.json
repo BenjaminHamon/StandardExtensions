@@ -17,7 +17,7 @@
 	"python.defaultInterpreterPath": "${workspaceFolder}/.venv/scripts/python",
 
 	"python.analysis.extraPaths": [
-		"./Sources/toolkit/",
+		"./Sources/",
 	],
 
 	"python.testing.pytestEnabled": true,
