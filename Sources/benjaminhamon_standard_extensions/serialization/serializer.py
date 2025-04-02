@@ -8,6 +8,11 @@ class Serializer(abc.ABC):
 
 
     @abc.abstractmethod
+    def get_content_type(self) -> str:
+        pass
+
+
+    @abc.abstractmethod
     def get_file_extension(self) -> str:
         pass
 

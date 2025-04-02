@@ -17,6 +17,10 @@ class YamlSerializer(Serializer):
         self.sort_keys: bool = False
 
 
+    def get_content_type(self) -> str:
+        return "application/yaml"
+
+
     def get_file_extension(self) -> str:
         return ".yaml"
 

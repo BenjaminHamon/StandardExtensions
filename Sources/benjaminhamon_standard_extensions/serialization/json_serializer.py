@@ -15,6 +15,10 @@ class JsonSerializer(Serializer):
         self.sort_keys: bool = False
 
 
+    def get_content_type(self) -> str:
+        return "application/json"
+
+
     def get_file_extension(self) -> str:
         return ".json"
 
