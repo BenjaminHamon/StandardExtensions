@@ -29,7 +29,8 @@ dependencies = []
 
 [project.optional-dependencies]
 all = [
-
+    "python-dateutil ~= 2.9.0",
+    "PyYAML ~= 6.0.2",
 ]
 
 dev = [
