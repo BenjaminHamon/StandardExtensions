@@ -106,6 +106,21 @@ def test_serialize_to_string(serializer_type):
 
 
 @pytest.mark.parametrize("serializer_type", all_serializer_types)
+def test_serialize_to_string_with_mismatched_types(serializer_type):
+    serializer = create_serializer(serializer_type)
+
+    data = 123
+    data_serialized = serializer.serialize_to_string(data)
+    with pytest.raises(TypeError):
+        serializer.deserialize_from_string(data_serialized, str)
+
+    data = "StringValue"
+    data_serialized = serializer.serialize_to_string(data)
+    with pytest.raises(TypeError):
+        serializer.deserialize_from_string(data_serialized, int)
+
+
+@pytest.mark.parametrize("serializer_type", all_serializer_types)
 def test_serialize_to_file(tmpdir, serializer_type):
     serializer = create_serializer(serializer_type)
     file_path = os.path.join(tmpdir, "Working", "Data" + serializer.get_file_extension())

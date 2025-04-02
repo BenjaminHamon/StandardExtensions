@@ -51,13 +51,14 @@ class JsonSerializer(Serializer):
 
     def _convert_from_serializable(self, obj_as_serializable: Any, obj_type: type) -> Any:
         converter = self._converter_collection.get(obj_type, None)
-        if converter is not None:
-            return converter.convert_from_serializable(obj_as_serializable)
-        return obj_as_serializable
+        obj_deserialized = converter.convert_from_serializable(obj_as_serializable) if converter is not None else obj_as_serializable
+
+        if not isinstance(obj_deserialized, obj_type):
+            raise TypeError("Type mismatch after deserialization (Expected: '%s', Actual: '%s')" % (obj_type, type(obj_deserialized)))
+
+        return obj_deserialized
 
 
     def _convert_to_serializable(self, obj: Any) -> Any:
         converter = self._converter_collection.get(type(obj), None)
-        if converter is not None:
-            return converter.convert_to_serializable(obj)
-        return obj
+        return converter.convert_to_serializable(obj) if converter is not None else obj
