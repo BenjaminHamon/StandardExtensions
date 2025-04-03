@@ -131,6 +131,8 @@ class WebClientAsync:
             return None
 
         response_content_as_text = await response.text()
+        if response_content_as_text == "":
+            return None
 
         try:
             if expected_content_type.startswith("text/"):

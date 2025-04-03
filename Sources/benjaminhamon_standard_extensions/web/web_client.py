@@ -127,13 +127,17 @@ class WebClient:
         if expected_obj_type is None:
             return None
 
+        response_content_as_text = response.text
+        if response_content_as_text == "":
+            return None
+
         try:
             if expected_content_type.startswith("text/"):
                 if expected_obj_type != str:
                     raise TypeError("Expected type '%s' but received text" % expected_obj_type)
-                return response.text
+                return response_content_as_text
 
-            serialized_data = response.text
+            serialized_data = response_content_as_text
             if serialized_data is None or serialized_data == "":
                 return None
 
@@ -143,4 +147,4 @@ class WebClient:
             return self._serializer.deserialize_from_string(serialized_data, expected_obj_type)
 
         except TypeError as exception:
-            raise WebContentException(request_identifier, method, url, response.status_code, response.text) from exception
+            raise WebContentException(request_identifier, method, url, response.status_code, response_content_as_text) from exception
