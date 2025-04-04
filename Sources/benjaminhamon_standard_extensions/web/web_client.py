@@ -1,5 +1,6 @@
 import datetime
 import logging
+import shutil
 from typing import Any, Optional
 import uuid
 
@@ -100,6 +101,65 @@ class WebClient:
             response.underlying_object, response_content_type, response_obj_type)
 
         return WebResponse(response.request_identifier, response.response_headers, response.status_code, response_data, response.underlying_object)
+
+
+    def upload(self, # pylint: disable = too-many-arguments
+            url: str, local_file_path: str, *,
+            check: bool = True, extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None, content_type: Optional[str] = None) -> WebResponse:
+
+        headers = {}
+        if content_type is not None:
+            headers["Content-Type"] = content_type
+        if extra_headers is not None:
+            headers.update(extra_headers)
+
+        with open(local_file_path, mode = "rb") as local_file:
+            return self.send_web_request("POST", url, check = check, extra_headers = headers, parameters = parameters, data = local_file)
+
+
+    def download(self, # pylint: disable = too-many-arguments
+            url: str, local_file_path: str, *,
+            check: bool = True, extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None, response_content_type: Optional[str] = None) -> WebResponse:
+
+        request_identifier = str(uuid.uuid4())
+        method = "GET"
+
+        headers = {}
+        if response_content_type is not None:
+            headers["Accept"] = response_content_type
+        if extra_headers is not None:
+            headers.update(extra_headers)
+
+        if self._authentication is not None:
+            headers["Authorization"] = self._authentication
+
+        self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
+
+        try:
+            response = requests.request(method, url,
+                headers = headers, params = parameters, stream = True, timeout = self.timeout.total_seconds())
+        except requests.RequestException as exception:
+            raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
+
+        try:
+            response_content_length = self._get_response_content_length(response)
+
+            self._logger.debug("(WebResponse) %s %s (Identifier: '%s', StatusCode: %s, ContentLength: %s)",
+                method, url, request_identifier, response.status_code, response_content_length if response_content_length is not None else "Unknown")
+
+            if check:
+                self._check_response_status(request_identifier, method, url, response)
+                self._check_response_content(request_identifier, method, url, response, response_content_type)
+
+            with open(local_file_path, mode = "wb") as local_file:
+                shutil.copyfileobj(response.raw, local_file)
+
+            return WebResponse(request_identifier, dict(response.headers), response.status_code, None, response)
+
+        finally:
+            response.close()
 
 
     def _check_response_status(self, request_identifier: str, method: str, url: str, response: requests.Response) -> None:

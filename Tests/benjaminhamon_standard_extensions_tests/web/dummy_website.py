@@ -34,6 +34,8 @@ def register_routes(flask_application: flask.Flask) -> None:
     flask_application.add_url_rule("/HtmlNotFound", methods = [ "GET" ], view_func = html_reponse_notfound)
     flask_application.add_url_rule("/Json", methods = [ "GET" ], view_func = json_response)
     flask_application.add_url_rule("/JsonNotFound", methods = [ "GET" ], view_func = json_reponse_notfound)
+    flask_application.add_url_rule("/Upload", methods = [ "POST" ], view_func = upload)
+    flask_application.add_url_rule("/Download", methods = [ "GET" ], view_func = download)
 
 
 def home() -> flask.Response:
@@ -77,6 +79,16 @@ def json_response() -> flask.Response:
 
 def json_reponse_notfound() -> flask.Response:
     return flask.Response(status = http.HTTPStatus.NOT_FOUND, mimetype = "application/json")
+
+
+def upload() -> flask.Response:
+    if flask.request.stream.read().decode(encoding = "utf-8") == "Okay":
+        return flask.Response()
+    return flask.Response(status = http.HTTPStatus.BAD_REQUEST)
+
+
+def download() -> flask.Response:
+    return flask.Response("Okay", mimetype = "text/plain")
 
 
 if __name__ == "__main__":

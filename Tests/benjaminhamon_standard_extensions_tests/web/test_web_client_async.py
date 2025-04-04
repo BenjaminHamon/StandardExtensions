@@ -246,3 +246,49 @@ async def test_send_api_request_json_not_found(website):
         assert response.status_code == 404
         assert response.data is None
         assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+
+
+
+@pytest.mark.asyncio
+async def test_upload(tmpdir, website):
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+
+    async with aiohttp.ClientSession() as session:
+        web_client = WebClientAsync(logger, serializer, session)
+
+        local_file_path = os.path.join(tmpdir, "Working", "ToUpload.txt")
+
+        os.makedirs(os.path.dirname(local_file_path))
+        with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
+            local_file.write("Okay")
+
+        response = await web_client.upload(website + "/Upload", local_file_path)
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+
+
+@pytest.mark.asyncio
+async def test_download(tmpdir, website):
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+
+    async with aiohttp.ClientSession() as session:
+        web_client = WebClientAsync(logger, serializer, session)
+
+        local_file_path = os.path.join(tmpdir, "Working", "Downloaded.txt")
+
+        os.makedirs(os.path.dirname(local_file_path))
+        response = await web_client.download(website + "/Download", local_file_path)
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+
+        assert os.path.exists(local_file_path)
+        with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
+            assert local_file.read() == "Okay"
