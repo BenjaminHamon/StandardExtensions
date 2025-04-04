@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import Any, Optional
+from typing import Any, Awaitable, Callable, Optional
 import uuid
 
 import aiohttp
@@ -34,32 +34,15 @@ class WebClientAsync:
             response_content_type: Optional[str] = None,
         ) -> WebResponse:
 
-        request_identifier = str(uuid.uuid4())
+        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
+            return await self._handle_web_response_data(response, response_content_type)
 
-        headers = {} if extra_headers is None else extra_headers
-        if self._authentication is not None:
-            headers["Authorization"] = self._authentication
+        headers = {}
+        if extra_headers is not None:
+            headers.update(extra_headers)
 
-        self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
-
-        try:
-            response = await self._session.request(method, url,
-                headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
-        except aiohttp.ClientConnectionError as exception:
-            raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
-
-        response_content_length = self._get_response_content_length(response)
-
-        self._logger.debug("(WebResponse) %s %s (Identifier: '%s', StatusCode: %s, ContentLength: %s)",
-            method, url, request_identifier, response.status, response_content_length if response_content_length is not None else "Unknown")
-
-        if check:
-            self._check_response_status(request_identifier, method, url, response)
-            self._check_response_content(request_identifier, method, url, response, response_content_type)
-
-        response_data = await self._get_web_response_data(response, response_content_type)
-
-        return WebResponse(request_identifier, dict(response.headers), response.status, response_data, response)
+        return await self._send_request_internal(method, url, handle_data,
+                check = check, headers = headers, parameters = parameters, data = data, response_content_type = response_content_type)
 
 
     async def send_api_request(self, # pylint: disable = too-many-arguments
@@ -69,20 +52,15 @@ class WebClientAsync:
             response_content_type: Optional[str] = None, response_obj_type: Optional[type] = None,
         ) -> WebResponse:
 
-        def get_headers() -> dict:
-            headers = {}
+        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]:
+            return await self._handle_api_response_data(request_identifier, method, url, response, response_content_type, response_obj_type)
 
-            headers["Accept"] = self._serializer.get_content_type()
-
-            if data is not None:
-                headers["Content-Type"] = self._serializer.get_content_type()
-
-            if extra_headers is not None:
-                headers.update(extra_headers)
-
-            return headers
-
-        headers = get_headers()
+        headers = {}
+        headers["Accept"] = self._serializer.get_content_type()
+        if data is not None:
+            headers["Content-Type"] = self._serializer.get_content_type()
+        if extra_headers is not None:
+            headers.update(extra_headers)
 
         serialized_data = None
         if data is not None:
@@ -91,23 +69,17 @@ class WebClientAsync:
         if response_content_type is None:
             response_content_type = self._serializer.get_content_type()
 
-        response = await self.send_web_request(method, url, check = check,
-                extra_headers = headers, parameters = parameters, data = serialized_data,
-                response_content_type = response_content_type)
-
-        if not isinstance(response.underlying_object, aiohttp.ClientResponse):
-            raise RuntimeError("Underlying object should be a ClientResponse object")
-
-        response_data = await self._get_api_response_data(response.request_identifier, method, url,
-            response.underlying_object, response_content_type, response_obj_type)
-
-        return WebResponse(response.request_identifier, response.response_headers, response.status_code, response_data, response.underlying_object)
+        return await self._send_request_internal(method, url, handle_data,
+                check = check, headers = headers, parameters = parameters, data = serialized_data, response_content_type = response_content_type)
 
 
     async def upload(self, # pylint: disable = too-many-arguments
             url: str, local_file_path: str, *,
             check: bool = True, extra_headers: Optional[dict] = None,
             parameters: Optional[dict] = None, content_type: Optional[str] = None) -> WebResponse:
+
+        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
+            return None
 
         headers = {}
         if content_type is not None:
@@ -116,7 +88,8 @@ class WebClientAsync:
             headers.update(extra_headers)
 
         with open(local_file_path, mode = "rb") as local_file:
-            return await self.send_web_request("POST", url, check = check, extra_headers = headers, parameters = parameters, data = local_file)
+            return await self._send_request_internal("POST", url, handle_data,
+                    check = check, headers = headers, parameters = parameters, data = local_file)
 
 
     async def download(self, # pylint: disable = too-many-arguments, too-many-locals
@@ -124,7 +97,9 @@ class WebClientAsync:
             check: bool = True, extra_headers: Optional[dict] = None,
             parameters: Optional[dict] = None, response_content_type: Optional[str] = None) -> WebResponse:
 
-        request_identifier = str(uuid.uuid4())
+        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
+            return await self._handle_download_response_data(local_file_path, response)
+
         method = "GET"
 
         headers = {}
@@ -133,6 +108,23 @@ class WebClientAsync:
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        return await self._send_request_internal(method, url, handle_data,
+                check = check, headers = headers, parameters = parameters, response_content_type = response_content_type)
+
+
+    async def _send_request_internal(self, # pylint: disable = too-many-arguments
+            method: str, url: str,
+            data_handler: Callable[[str,aiohttp.ClientResponse],Awaitable[Optional[Any]]],
+            *,
+            check: bool = True, headers: Optional[dict] = None,
+            parameters: Optional[dict] = None, data: Optional[Any] = None,
+            response_content_type: Optional[str] = None,
+        ) -> WebResponse:
+
+        request_identifier = str(uuid.uuid4())
+
+        if headers is None:
+            headers = {}
         if self._authentication is not None:
             headers["Authorization"] = self._authentication
 
@@ -140,7 +132,7 @@ class WebClientAsync:
 
         try:
             response = await self._session.request(method, url,
-                headers = headers, params = parameters, timeout = self.timeout.total_seconds())
+                    headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
         except aiohttp.ClientConnectionError as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 
@@ -154,33 +146,12 @@ class WebClientAsync:
                 self._check_response_status(request_identifier, method, url, response)
                 self._check_response_content(request_identifier, method, url, response, response_content_type)
 
-            with open(local_file_path, mode = "wb") as local_file:
-                async for chunk in response.content.iter_chunked(self.chunk_size):
-                    local_file.write(chunk)
-
-            response_data = await self._get_web_response_data(response, response_content_type)
+            response_data = await data_handler(request_identifier, response)
 
             return WebResponse(request_identifier, dict(response.headers), response.status, response_data, response)
 
         finally:
             response.close()
-
-
-    def _get_request_headers(self, extra_headers: Optional[dict], has_data: bool) -> dict:
-        headers = {}
-
-        if self._authentication is not None:
-            headers["Authorization"] = self._authentication
-
-        headers["Accept"] = self._serializer.get_content_type()
-
-        if has_data:
-            headers["Content-Type"] = self._serializer.get_content_type()
-
-        if extra_headers is not None:
-            headers.update(extra_headers)
-
-        return headers
 
 
     def _check_response_status(self, request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse) -> None:
@@ -220,7 +191,7 @@ class WebClientAsync:
         return None
 
 
-    async def _get_web_response_data(self, response: aiohttp.ClientResponse, expected_content_type: Optional[str]) -> Optional[Any]:
+    async def _handle_web_response_data(self, response: aiohttp.ClientResponse, expected_content_type: Optional[str]) -> Optional[Any]:
         if response.status == 204:
             return None
         if expected_content_type is None:
@@ -236,7 +207,7 @@ class WebClientAsync:
         return response.content
 
 
-    async def _get_api_response_data(self, # pylint: disable = too-many-arguments, too-many-positional-arguments, too-many-return-statements
+    async def _handle_api_response_data(self, # pylint: disable = too-many-arguments, too-many-positional-arguments, too-many-return-statements
             request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse,
             expected_content_type: Optional[str], expected_obj_type: Optional[type]) -> Optional[Any]:
 
@@ -271,3 +242,14 @@ class WebClientAsync:
         except TypeError as exception:
             local_response = WebResponse(request_identifier, dict(response.headers), response.status, response_content_as_text, response)
             raise WebContentException(request_identifier, method, url, response.status, local_response) from exception
+
+
+    async def _handle_download_response_data(self, local_file_path: str, response: aiohttp.ClientResponse) -> None:
+        if response.status == 204:
+            return
+        if response.content is None:
+            return
+
+        with open(local_file_path, mode = "wb") as local_file:
+            async for chunk in response.content.iter_chunked(self.chunk_size):
+                local_file.write(chunk)
