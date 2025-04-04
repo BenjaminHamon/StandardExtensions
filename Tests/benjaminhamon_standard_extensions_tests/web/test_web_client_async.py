@@ -69,53 +69,31 @@ async def test_send_request_connection_error():
         web_client = WebClientAsync(logger, serializer, session)
 
         with pytest.raises(WebRequestException) as exception_info:
-            await web_client.send_request("GET", "https://localhost:4998/")
+            await web_client.send_web_request("GET", "http://localhost:4998/")
 
         assert isinstance(exception_info.value.__cause__, aiohttp.ClientConnectionError)
         assert exception_info.value.status_code is None
-        assert exception_info.value.response_data is None
-
+        assert exception_info.value.response is None
 
 @pytest.mark.asyncio
-async def test_send_request_html(website):
+async def test_send_web_request_html(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
     async with aiohttp.ClientSession() as session:
         web_client = WebClientAsync(logger, serializer, session)
 
-        assert await web_client.send_request("GET", website + "/Html", response_content_type = "text/html", response_obj_type = str) is not None
+        response = await web_client.send_web_request("GET", website + "/Html", response_content_type = "text/html")
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, str)
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
-async def test_send_request_html_discarded(website):
-    logger = logging.getLogger("Tests")
-    serializer = JsonSerializer()
-
-    async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, serializer, session)
-
-        assert await web_client.send_request("GET", website + "/Html") is None
-
-
-@pytest.mark.asyncio
-async def test_send_request_html_unexcepted_content_type(website):
-    logger = logging.getLogger("Tests")
-    serializer = JsonSerializer()
-
-    async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, serializer, session)
-
-        with pytest.raises(WebContentException) as exception_info:
-            assert await web_client.send_request("GET", website + "/Html", response_content_type = "application/json") is None
-
-        assert isinstance(exception_info.value.__cause__, TypeError)
-        assert exception_info.value.status_code == 200
-        assert exception_info.value.response_data is not None
-
-
-@pytest.mark.asyncio
-async def test_send_request_html_unexcepted_obj_type(website):
+async def test_send_web_request_html_discarded(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -123,15 +101,38 @@ async def test_send_request_html_unexcepted_obj_type(website):
         web_client = WebClientAsync(logger, serializer, session)
 
         with pytest.raises(WebContentException) as exception_info:
-            assert await web_client.send_request("GET", website + "/Html", response_content_type = "text/html", response_obj_type = dict) is None
+            await web_client.send_web_request("GET", website + "/Html", response_content_type = "application/json")
 
         assert isinstance(exception_info.value.__cause__, TypeError)
         assert exception_info.value.status_code == 200
-        assert exception_info.value.response_data is not None
+        assert exception_info.value.response is not None
+        assert exception_info.value.response.data is None
+        assert isinstance(exception_info.value.response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
-async def test_send_request_html_not_found(website):
+async def test_send_web_request_html_unexcepted_content_type(website):
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+
+    async with aiohttp.ClientSession() as session:
+        web_client = WebClientAsync(logger, serializer, session)
+
+        with pytest.raises(WebContentException) as exception_info:
+            await web_client.send_web_request("GET", website + "/Html", response_content_type = "application/json")
+
+        assert isinstance(exception_info.value.__cause__, TypeError)
+
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+
+
+@pytest.mark.asyncio
+async def test_send_web_request_html_not_found(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -139,37 +140,52 @@ async def test_send_request_html_not_found(website):
         web_client = WebClientAsync(logger, serializer, session)
 
         with pytest.raises(WebStatusException) as exception_info:
-            await web_client.send_request("GET", website + "/HtmlNotFound", response_content_type = "text/html", response_obj_type = str)
+            await web_client.send_web_request("GET", website + "/HtmlNotFound", response_content_type = "text/html")
 
         assert isinstance(exception_info.value.__cause__, aiohttp.ClientResponseError)
-        assert exception_info.value.status_code == 404
-        assert exception_info.value.response_data is None
+
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 404
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
-async def test_send_request_json(website):
+async def test_send_api_request_json(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
     async with aiohttp.ClientSession() as session:
         web_client = WebClientAsync(logger, serializer, session)
 
-        assert await web_client.send_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = dict) is not None
+        response = await web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = dict)
 
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, dict)
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 @pytest.mark.asyncio
-async def test_send_request_json_discarded(website):
+async def test_send_api_request_json_discarded(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
     async with aiohttp.ClientSession() as session:
         web_client = WebClientAsync(logger, serializer, session)
 
-        assert await web_client.send_request("GET", website + "/Json") is None
+        response = await web_client.send_api_request("GET", website + "/Json")
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
-async def test_send_request_json_unexcepted_content_type(website):
+async def test_send_api_request_json_unexcepted_content_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -177,15 +193,20 @@ async def test_send_request_json_unexcepted_content_type(website):
         web_client = WebClientAsync(logger, serializer, session)
 
         with pytest.raises(WebContentException) as exception_info:
-            assert await web_client.send_request("GET", website + "/Json", response_content_type = "text/html") is None
+            await web_client.send_api_request("GET", website + "/Json", response_content_type = "text/html")
 
         assert isinstance(exception_info.value.__cause__, TypeError)
-        assert exception_info.value.status_code == 200
-        assert exception_info.value.response_data is not None
+
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
-async def test_send_request_json_unexcepted_obj_type(website):
+async def test_send_api_request_json_unexcepted_obj_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -193,15 +214,21 @@ async def test_send_request_json_unexcepted_obj_type(website):
         web_client = WebClientAsync(logger, serializer, session)
 
         with pytest.raises(WebContentException) as exception_info:
-            assert await web_client.send_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = int) is None
+            await web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = int)
 
         assert isinstance(exception_info.value.__cause__, TypeError)
-        assert exception_info.value.status_code == 200
-        assert exception_info.value.response_data is not None
+
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, str)
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
-async def test_send_request_json_not_found(website):
+async def test_send_api_request_json_not_found(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -209,8 +236,13 @@ async def test_send_request_json_not_found(website):
         web_client = WebClientAsync(logger, serializer, session)
 
         with pytest.raises(WebStatusException) as exception_info:
-            await web_client.send_request("GET", website + "/JsonNotFound", response_content_type = "application/json", response_obj_type = dict)
+            await web_client.send_api_request("GET", website + "/JsonNotFound", response_content_type = "application/json", response_obj_type = dict)
 
         assert isinstance(exception_info.value.__cause__, aiohttp.ClientResponseError)
-        assert exception_info.value.status_code == 404
-        assert exception_info.value.response_data is None
+
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 404
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)

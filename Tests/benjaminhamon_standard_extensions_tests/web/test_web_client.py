@@ -59,124 +59,159 @@ async def website_fixture():
         raise RuntimeError("Dummy website failed to terminate")
 
 
-def test_send_request_connection_error():
+def test_send_web_request_connection_error():
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
     with pytest.raises(WebRequestException) as exception_info:
-        web_client.send_request("GET", "http://localhost:4998/")
+        web_client.send_web_request("GET", "http://localhost:4998/")
 
     assert isinstance(exception_info.value.__cause__, requests.RequestException)
     assert exception_info.value.status_code is None
-    assert exception_info.value.response_data is None
+    assert exception_info.value.response is None
 
 
-def test_send_request_html(website):
+def test_send_web_request_html(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
-    assert web_client.send_request("GET", website + "/Html", response_content_type = "text/html", response_obj_type = str) is not None
+    response = web_client.send_web_request("GET", website + "/Html", response_content_type = "text/html")
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, str)
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_html_discarded(website):
+def test_send_web_request_html_discarded(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
-    assert web_client.send_request("GET", website + "/Html") is None
+    response = web_client.send_web_request("GET", website + "/Html")
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_html_unexcepted_content_type(website):
+def test_send_web_request_html_unexcepted_content_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
     with pytest.raises(WebContentException) as exception_info:
-        assert web_client.send_request("GET", website + "/Html", response_content_type = "application/json") is None
+        web_client.send_web_request("GET", website + "/Html", response_content_type = "application/json")
 
     assert isinstance(exception_info.value.__cause__, TypeError)
-    assert exception_info.value.status_code == 200
-    assert exception_info.value.response_data is not None
+
+    response = exception_info.value.response
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_html_unexcepted_obj_type(website):
-    logger = logging.getLogger("Tests")
-    serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
-
-    with pytest.raises(WebContentException) as exception_info:
-        assert web_client.send_request("GET", website + "/Html", response_content_type = "text/html", response_obj_type = dict) is None
-
-    assert isinstance(exception_info.value.__cause__, TypeError)
-    assert exception_info.value.status_code == 200
-    assert exception_info.value.response_data is not None
-
-
-def test_send_request_html_not_found(website):
+def test_send_web_request_html_not_found(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
     with pytest.raises(WebStatusException) as exception_info:
-        web_client.send_request("GET", website + "/HtmlNotFound", response_content_type = "text/html", response_obj_type = str)
+        web_client.send_web_request("GET", website + "/HtmlNotFound", response_content_type = "text/html")
 
     assert isinstance(exception_info.value.__cause__, requests.HTTPError)
-    assert exception_info.value.status_code == 404
-    assert exception_info.value.response_data is None
+
+    response = exception_info.value.response
+
+    assert response is not None
+    assert response.status_code == 404
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_json(website):
+def test_send_api_request_json(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
-    assert web_client.send_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = dict) is not None
+    response = web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = dict)
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, dict)
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_json_discarded(website):
+def test_send_api_request_json_discarded(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
-    assert web_client.send_request("GET", website + "/Json") is None
+    response = web_client.send_api_request("GET", website + "/Json")
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_json_unexcepted_content_type(website):
+def test_send_api_request_json_unexcepted_content_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
     with pytest.raises(WebContentException) as exception_info:
-        assert web_client.send_request("GET", website + "/Json", response_content_type = "text/html") is None
+        web_client.send_api_request("GET", website + "/Json", response_content_type = "text/html")
 
     assert isinstance(exception_info.value.__cause__, TypeError)
-    assert exception_info.value.status_code == 200
-    assert exception_info.value.response_data is not None
+
+    response = exception_info.value.response
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_json_unexcepted_obj_type(website):
+def test_send_api_request_json_unexcepted_obj_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
     with pytest.raises(WebContentException) as exception_info:
-        assert web_client.send_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = int) is None
+        web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = int)
 
     assert isinstance(exception_info.value.__cause__, TypeError)
-    assert exception_info.value.status_code == 200
-    assert exception_info.value.response_data is not None
+
+    response = exception_info.value.response
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, str)
+    assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_json_not_found(website):
+def test_send_api_request_json_not_found(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
     web_client = WebClient(logger, serializer)
 
     with pytest.raises(WebStatusException) as exception_info:
-        web_client.send_request("GET", website + "/JsonNotFound", response_content_type = "application/json", response_obj_type = dict)
+        web_client.send_api_request("GET", website + "/JsonNotFound", response_content_type = "application/json", response_obj_type = dict)
 
     assert isinstance(exception_info.value.__cause__, requests.HTTPError)
-    assert exception_info.value.status_code == 404
-    assert exception_info.value.response_data is None
+
+    response = exception_info.value.response
+
+    assert response is not None
+    assert response.status_code == 404
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
