@@ -18,12 +18,7 @@ from benjaminhamon_standard_extensions.web.web_request_exception import WebReque
 from benjaminhamon_standard_extensions.web.web_status_exception import WebStatusException
 
 
-@pytest.fixture(scope = "module")
-def event_loop():
-    return asyncio.get_event_loop()
-
-
-@pytest_asyncio.fixture(name = "website", scope = "module")
+@pytest_asyncio.fixture(name = "website", scope = "module", loop_scope = "module")
 async def website_fixture():
     timeout_seconds = 5
 
