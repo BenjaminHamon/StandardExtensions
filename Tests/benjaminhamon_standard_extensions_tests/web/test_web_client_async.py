@@ -280,7 +280,7 @@ async def test_upload(tmpdir, website):
         with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
             local_file.write("Okay")
 
-        response = await web_client.upload(website + "/Upload", local_file_path)
+        response = await web_client.upload("POST", website + "/Upload", local_file_path)
 
         assert response is not None
         assert response.status_code == 200

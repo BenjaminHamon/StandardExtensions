@@ -89,6 +89,7 @@ class WebClientAsync:
 
 
     async def upload(self, # pylint: disable = too-many-arguments
+            method: str,
             url: str,
             local_file_path: str,
             *,
@@ -109,7 +110,7 @@ class WebClientAsync:
             headers.update(extra_headers)
 
         with open(local_file_path, mode = "rb") as local_file:
-            return await self._send_request_internal("POST", url, handle_data,
+            return await self._send_request_internal(method, url, handle_data,
                     check = check, headers = headers, parameters = parameters, data = local_file, simulate = simulate)
 
 
