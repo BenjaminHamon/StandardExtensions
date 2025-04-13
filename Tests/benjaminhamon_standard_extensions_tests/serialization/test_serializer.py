@@ -79,6 +79,11 @@ class _MyCollectionItemSerializationConverter(SerializationConverter):
 def test_serialize_to_string(serializer_type):
     serializer = create_serializer(serializer_type)
 
+    data = None
+    data_serialized = serializer.serialize_to_string(data)
+    data_deserialized = serializer.deserialize_from_string(data_serialized, type(data))
+    assert data_deserialized == data
+
     data = 123
     data_serialized = serializer.serialize_to_string(data)
     data_deserialized = serializer.deserialize_from_string(data_serialized, type(data))
@@ -109,6 +114,16 @@ def test_serialize_to_string(serializer_type):
 def test_serialize_to_string_with_mismatched_types(serializer_type):
     serializer = create_serializer(serializer_type)
 
+    data = None
+    data_serialized = serializer.serialize_to_string(data)
+    with pytest.raises(TypeError):
+        serializer.deserialize_from_string(data_serialized, str)
+
+    data = "StringValue"
+    data_serialized = serializer.serialize_to_string(data)
+    with pytest.raises(TypeError):
+        serializer.deserialize_from_string(data_serialized, type(None))
+
     data = 123
     data_serialized = serializer.serialize_to_string(data)
     with pytest.raises(TypeError):
@@ -126,6 +141,11 @@ def test_serialize_to_file(tmpdir, serializer_type):
     file_path = os.path.join(tmpdir, "Working", "Data" + serializer.get_file_extension())
 
     os.makedirs(os.path.dirname(file_path))
+
+    data = None
+    serializer.serialize_to_file(data, file_path)
+    data_deserialized = serializer.deserialize_from_file(file_path, type(data))
+    assert data_deserialized == data
 
     data = 123
     serializer.serialize_to_file(data, file_path)
