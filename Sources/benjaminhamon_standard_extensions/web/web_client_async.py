@@ -7,7 +7,6 @@ import aiohttp
 import multidict
 import yarl
 
-from benjaminhamon_standard_extensions.serialization.serializer import Serializer
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
 from benjaminhamon_standard_extensions.web.web_response import WebResponse
@@ -17,11 +16,8 @@ from benjaminhamon_standard_extensions.web.web_status_exception import WebStatus
 class WebClientAsync:
 
 
-    def __init__(self,
-            logger: logging.Logger, serializer: Serializer, session: aiohttp.ClientSession, *, authentication: Optional[str] = None) -> None:
-
+    def __init__(self, logger: logging.Logger, session: aiohttp.ClientSession, *, authentication: Optional[str] = None) -> None:
         self._logger = logger
-        self._serializer = serializer
         self._session = session
         self._authentication = authentication
 
@@ -29,7 +25,7 @@ class WebClientAsync:
         self.timeout = datetime.timedelta(seconds = 30)
 
 
-    async def send_web_request(self, # pylint: disable = too-many-arguments
+    async def send_request(self, # pylint: disable = too-many-arguments
             method: str,
             url: str,
             *,
@@ -37,55 +33,18 @@ class WebClientAsync:
             extra_headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
             data: Optional[Any] = None,
-            response_content_type: Optional[str] = None,
             simulate: bool = False,
         ) -> WebResponse:
 
-        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
-            return await self._handle_web_response_data(response, response_content_type)
+        async def handle_data(response: aiohttp.ClientResponse) -> Optional[Any]:
+            return await self._handle_web_response_data(response)
 
         headers = {}
         if extra_headers is not None:
             headers.update(extra_headers)
 
         return await self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, data = data,
-                response_content_type = response_content_type, simulate = simulate)
-
-
-    async def send_api_request(self, # pylint: disable = too-many-arguments
-            method: str,
-            url: str,
-            *,
-            check: bool = True,
-            extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None,
-            data: Optional[dict] = None,
-            response_content_type: Optional[str] = None,
-            response_obj_type: Optional[type] = None,
-            simulate: bool = False,
-        ) -> WebResponse:
-
-        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]:
-            return await self._handle_api_response_data(request_identifier, method, url, response, response_content_type, response_obj_type)
-
-        headers = {}
-        headers["Accept"] = self._serializer.get_content_type()
-        if data is not None:
-            headers["Content-Type"] = self._serializer.get_content_type()
-        if extra_headers is not None:
-            headers.update(extra_headers)
-
-        serialized_data = None
-        if data is not None:
-            serialized_data = self._serializer.serialize_to_string(data)
-
-        if response_content_type is None:
-            response_content_type = self._serializer.get_content_type()
-
-        return await self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, data = serialized_data,
-                response_content_type = response_content_type, simulate = simulate)
+                check = check, headers = headers, parameters = parameters, data = data, simulate = simulate)
 
 
     async def upload(self, # pylint: disable = too-many-arguments
@@ -100,8 +59,8 @@ class WebClientAsync:
             simulate: bool = False,
         ) -> WebResponse:
 
-        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
-            return None
+        async def handle_data(response: aiohttp.ClientResponse) -> Optional[Any]:
+            return await self._handle_web_response_data(response)
 
         headers = {}
         if content_type is not None:
@@ -114,7 +73,7 @@ class WebClientAsync:
                     check = check, headers = headers, parameters = parameters, data = local_file, simulate = simulate)
 
 
-    async def download(self, # pylint: disable = too-many-arguments, too-many-locals
+    async def download(self, # pylint: disable = too-many-arguments
             url: str,
             local_file_path: str,
             *,
@@ -125,7 +84,7 @@ class WebClientAsync:
             simulate: bool = False,
         ) -> WebResponse:
 
-        async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
+        async def handle_data(response: aiohttp.ClientResponse) -> Optional[Any]:
             return await self._handle_download_response_data(local_file_path, response)
 
         method = "GET"
@@ -137,20 +96,18 @@ class WebClientAsync:
             headers.update(extra_headers)
 
         return await self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters,
-                response_content_type = response_content_type, simulate = simulate)
+                check = check, headers = headers, parameters = parameters, simulate = simulate)
 
 
-    async def _send_request_internal(self, # pylint: disable = too-many-arguments, too-many-locals
+    async def _send_request_internal(self, # pylint: disable = too-many-arguments
             method: str,
             url: str,
-            data_handler: Callable[[str,aiohttp.ClientResponse],Awaitable[Optional[Any]]],
+            data_handler: Callable[[aiohttp.ClientResponse],Awaitable[Optional[Any]]],
             *,
             check: bool = True,
             headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
             data: Optional[Any] = None,
-            response_content_type: Optional[str] = None,
             simulate: bool = False,
         ) -> WebResponse:
 
@@ -180,9 +137,9 @@ class WebClientAsync:
 
             if check:
                 self._check_response_status(request_identifier, method, url, response)
-                self._check_response_content(request_identifier, method, url, response, response_content_type)
+                self._check_response_content(request_identifier, method, url, headers, response)
 
-            response_data = await data_handler(request_identifier, response)
+            response_data = await data_handler(response)
 
             return WebResponse(request_identifier, dict(response.headers), response.status, response_data, response)
 
@@ -220,13 +177,15 @@ class WebClientAsync:
 
 
     def _check_response_content(self, # pylint: disable = too-many-arguments, too-many-positional-arguments
-            request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse, expected_content_type: Optional[str]) -> None:
+            request_identifier: str, method: str, url: str, headers: dict, response: aiohttp.ClientResponse) -> None:
 
         if response.status == 204:
             return
-        if expected_content_type is None:
-            return
         if response.content is None:
+            return
+
+        expected_content_type = headers.get("Accept")
+        if expected_content_type is None:
             return
 
         try:
@@ -248,66 +207,20 @@ class WebClientAsync:
         return None
 
 
-    async def _handle_web_response_data(self, response: aiohttp.ClientResponse, expected_content_type: Optional[str]) -> Optional[Any]:
+    async def _handle_web_response_data(self, response: aiohttp.ClientResponse) -> Optional[Any]:
         if response.status == 204:
-            return None
-        if expected_content_type is None:
             return None
         if response.content is None:
             return None
 
-        if expected_content_type.startswith("text/"):
-            response_content_as_text = await response.text()
-            if response_content_as_text == "":
-                return None
-            return response_content_as_text
+        content_type = response.headers.get("Content-Type")
+        if content_type is not None and content_type.startswith("text/"):
+            return await response.text()
 
         return await response.read()
 
 
-    async def _handle_api_response_data(self, # pylint: disable = too-many-arguments, too-many-positional-arguments, too-many-return-statements
-            request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse,
-            expected_content_type: Optional[str], expected_obj_type: Optional[type]) -> Optional[Any]:
-
-        if response.status == 204:
-            return None
-        if expected_content_type is None:
-            return None
-        if response.content is None:
-            return None
-        if expected_obj_type is None:
-            return None
-
-        response_content_as_text = await response.text()
-        if response_content_as_text == "":
-            return None
-
-        try:
-            if expected_content_type.startswith("text/"):
-                if expected_obj_type != str:
-                    raise TypeError("Expected type '%s' but received text" % expected_obj_type)
-                return response_content_as_text
-
-            serialized_data = response_content_as_text
-            if serialized_data is None or serialized_data == "":
-                return None
-
-            if expected_content_type != self._serializer.get_content_type():
-                raise TypeError("Expected type '%s' but received type '%s'" % (self._serializer.get_content_type()), expected_content_type)
-
-            return self._serializer.deserialize_from_string(serialized_data, expected_obj_type)
-
-        except TypeError as exception:
-            local_response = WebResponse(request_identifier, dict(response.headers), response.status, response_content_as_text, response)
-            raise WebContentException(request_identifier, method, url, response.status, local_response) from exception
-
-
     async def _handle_download_response_data(self, local_file_path: str, response: aiohttp.ClientResponse) -> None:
-        if response.status == 204:
-            return
-        if response.content is None:
-            return
-
         with open(local_file_path, mode = "wb") as local_file:
             async for chunk in response.content.iter_chunked(self.chunk_size):
                 local_file.write(chunk)

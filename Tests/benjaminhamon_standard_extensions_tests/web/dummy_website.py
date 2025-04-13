@@ -31,20 +31,13 @@ def create_application() -> flask.Flask:
 
 def register_routes(flask_application: flask.Flask) -> None:
     flask_application.add_url_rule("/", methods = [ "GET" ], view_func = home)
-    flask_application.add_url_rule("/Html", methods = [ "GET" ], view_func = html_reponse)
-    flask_application.add_url_rule("/HtmlNotFound", methods = [ "GET" ], view_func = html_reponse_notfound)
-    flask_application.add_url_rule("/Binary", methods = [ "GET" ], view_func = binary_response)
-    flask_application.add_url_rule("/Json", methods = [ "GET" ], view_func = json_response)
-    flask_application.add_url_rule("/JsonNotFound", methods = [ "GET" ], view_func = json_reponse_notfound)
+    flask_application.add_url_rule("/Binary", methods = [ "GET" ], view_func = binary)
+    flask_application.add_url_rule("/NotFound", methods = [ "GET" ], view_func = not_found)
     flask_application.add_url_rule("/Upload", methods = [ "POST" ], view_func = upload)
     flask_application.add_url_rule("/Download", methods = [ "GET" ], view_func = download)
 
 
 def home() -> flask.Response:
-    return flask.Response()
-
-
-def html_reponse() -> flask.Response:
     html_as_text = """
 <!doctype html>
 <html>
@@ -65,31 +58,17 @@ def html_reponse() -> flask.Response:
     return flask.Response(html_as_text.strip(), mimetype = "text/html")
 
 
-def html_reponse_notfound() -> flask.Response:
-    return flask.Response(status = http.HTTPStatus.NOT_FOUND, mimetype = "text/html")
-
-
-def binary_response() -> flask.Response:
+def binary() -> flask.Response:
     return flask.Response(base64.b64encode(b"Okay"), mimetype = "application/octet-stream")
 
 
-def json_response() -> flask.Response:
-    json_as_text = """
-{
-    "key": "value"
-}
-"""
-
-    return flask.Response(json_as_text.strip(), mimetype = "application/json")
-
-
-def json_reponse_notfound() -> flask.Response:
-    return flask.Response(status = http.HTTPStatus.NOT_FOUND, mimetype = "application/json")
+def not_found() -> flask.Response:
+    return flask.Response(status = http.HTTPStatus.NOT_FOUND, mimetype = "text/html")
 
 
 def upload() -> flask.Response:
     if flask.request.stream.read().decode(encoding = "utf-8") == "Okay":
-        return flask.Response()
+        return flask.Response("", mimetype = "text/html")
     return flask.Response(status = http.HTTPStatus.BAD_REQUEST)
 
 
