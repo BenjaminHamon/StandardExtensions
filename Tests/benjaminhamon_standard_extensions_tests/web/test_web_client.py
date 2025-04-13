@@ -62,208 +62,234 @@ async def website_fixture():
 def test_send_web_request_with_simulate():
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    response = web_client.send_web_request("GET", "http://localhost:4998/", simulate = True)
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = web_client.send_web_request("GET", "http://localhost:4998/", simulate = True)
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_web_request_connection_error():
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    with pytest.raises(WebRequestException) as exception_info:
-        web_client.send_web_request("GET", "http://localhost:4998/")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert isinstance(exception_info.value.__cause__, requests.RequestException)
-    assert exception_info.value.status_code is None
-    assert exception_info.value.response is None
+        with pytest.raises(WebRequestException) as exception_info:
+            web_client.send_web_request("GET", "http://localhost:4998/")
+
+        assert isinstance(exception_info.value.__cause__, requests.RequestException)
+        assert exception_info.value.status_code is None
+        assert exception_info.value.response is None
 
 
 def test_send_web_request_html(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    response = web_client.send_web_request("GET", website + "/Html", response_content_type = "text/html")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is not None
-    assert isinstance(response.data, str)
-    assert isinstance(response.underlying_object, requests.Response)
+        response = web_client.send_web_request("GET", website + "/Html", response_content_type = "text/html")
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, str)
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_web_request_html_discarded(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    response = web_client.send_web_request("GET", website + "/Html")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = web_client.send_web_request("GET", website + "/Html")
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_web_request_html_unexcepted_content_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    with pytest.raises(WebContentException) as exception_info:
-        web_client.send_web_request("GET", website + "/Html", response_content_type = "application/json")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert isinstance(exception_info.value.__cause__, TypeError)
+        with pytest.raises(WebContentException) as exception_info:
+            web_client.send_web_request("GET", website + "/Html", response_content_type = "application/json")
 
-    response = exception_info.value.response
+        assert isinstance(exception_info.value.__cause__, TypeError)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_web_request_html_not_found(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    with pytest.raises(WebStatusException) as exception_info:
-        web_client.send_web_request("GET", website + "/HtmlNotFound", response_content_type = "text/html")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert isinstance(exception_info.value.__cause__, requests.HTTPError)
+        with pytest.raises(WebStatusException) as exception_info:
+            web_client.send_web_request("GET", website + "/HtmlNotFound", response_content_type = "text/html")
 
-    response = exception_info.value.response
+        assert isinstance(exception_info.value.__cause__, requests.HTTPError)
 
-    assert response is not None
-    assert response.status_code == 404
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 404
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_api_request_json(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    response = web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = dict)
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is not None
-    assert isinstance(response.data, dict)
-    assert isinstance(response.underlying_object, requests.Response)
+        response = web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = dict)
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, dict)
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_api_request_json_discarded(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    response = web_client.send_api_request("GET", website + "/Json")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = web_client.send_api_request("GET", website + "/Json")
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_api_request_json_unexcepted_content_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    with pytest.raises(WebContentException) as exception_info:
-        web_client.send_api_request("GET", website + "/Json", response_content_type = "text/html")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert isinstance(exception_info.value.__cause__, TypeError)
+        with pytest.raises(WebContentException) as exception_info:
+            web_client.send_api_request("GET", website + "/Json", response_content_type = "text/html")
 
-    response = exception_info.value.response
+        assert isinstance(exception_info.value.__cause__, TypeError)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_api_request_json_unexcepted_obj_type(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    with pytest.raises(WebContentException) as exception_info:
-        web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = int)
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert isinstance(exception_info.value.__cause__, TypeError)
+        with pytest.raises(WebContentException) as exception_info:
+            web_client.send_api_request("GET", website + "/Json", response_content_type = "application/json", response_obj_type = int)
 
-    response = exception_info.value.response
+        assert isinstance(exception_info.value.__cause__, TypeError)
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is not None
-    assert isinstance(response.data, str)
-    assert isinstance(response.underlying_object, requests.Response)
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, str)
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_api_request_json_not_found(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    with pytest.raises(WebStatusException) as exception_info:
-        web_client.send_api_request("GET", website + "/JsonNotFound", response_content_type = "application/json", response_obj_type = dict)
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    assert isinstance(exception_info.value.__cause__, requests.HTTPError)
+        with pytest.raises(WebStatusException) as exception_info:
+            web_client.send_api_request("GET", website + "/JsonNotFound", response_content_type = "application/json", response_obj_type = dict)
 
-    response = exception_info.value.response
+        assert isinstance(exception_info.value.__cause__, requests.HTTPError)
 
-    assert response is not None
-    assert response.status_code == 404
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = exception_info.value.response
+
+        assert response is not None
+        assert response.status_code == 404
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_upload(tmpdir, website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    local_file_path = os.path.join(tmpdir, "Working", "ToUpload.txt")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    os.makedirs(os.path.dirname(local_file_path))
-    with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
-        local_file.write("Okay")
+        local_file_path = os.path.join(tmpdir, "Working", "ToUpload.txt")
 
-    response = web_client.upload(website + "/Upload", local_file_path)
+        os.makedirs(os.path.dirname(local_file_path))
+        with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
+            local_file.write("Okay")
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        response = web_client.upload(website + "/Upload", local_file_path)
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_download(tmpdir, website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
-    web_client = WebClient(logger, serializer)
 
-    local_file_path = os.path.join(tmpdir, "Working", "Downloaded.txt")
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
 
-    os.makedirs(os.path.dirname(local_file_path))
-    response = web_client.download(website + "/Download", local_file_path)
+        local_file_path = os.path.join(tmpdir, "Working", "Downloaded.txt")
 
-    assert response is not None
-    assert response.status_code == 200
-    assert response.data is None
-    assert isinstance(response.underlying_object, requests.Response)
+        os.makedirs(os.path.dirname(local_file_path))
+        response = web_client.download(website + "/Download", local_file_path)
 
-    assert os.path.exists(local_file_path)
-    with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
-        assert local_file.read() == "Okay"
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, requests.Response)
+
+        assert os.path.exists(local_file_path)
+        with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
+            assert local_file.read() == "Okay"

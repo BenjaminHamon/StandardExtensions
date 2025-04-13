@@ -16,10 +16,11 @@ class WebClient:
 
 
     def __init__(self,
-            logger: logging.Logger, serializer: Serializer, *, authentication: Optional[str] = None) -> None:
+            logger: logging.Logger, serializer: Serializer, session: requests.Session, *, authentication: Optional[str] = None) -> None:
 
         self._logger = logger
         self._serializer = serializer
+        self._session = session
         self._authentication = authentication
 
         self.chunk_size: int = 1024 * 1024
@@ -162,7 +163,7 @@ class WebClient:
             if simulate:
                 response = self._fake_response()
             else:
-                response = requests.request(method, url,
+                response = self._session.request(method, url,
                     headers = headers, params = parameters, data = data, stream = True, timeout = self.timeout.total_seconds())
         except requests.RequestException as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
