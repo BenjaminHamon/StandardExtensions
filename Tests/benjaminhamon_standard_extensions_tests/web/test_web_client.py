@@ -160,6 +160,22 @@ def test_send_web_request_html_not_found(website):
         assert isinstance(response.underlying_object, requests.Response)
 
 
+def test_send_web_request_binary(website):
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+
+    with requests.Session() as session:
+        web_client = WebClient(logger, serializer, session)
+
+        response = web_client.send_web_request("GET", website + "/Binary", response_content_type = "application/octet-stream")
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, bytes)
+        assert isinstance(response.underlying_object, requests.Response)
+
+
 def test_send_api_request_json(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()

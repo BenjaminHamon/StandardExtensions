@@ -170,6 +170,23 @@ async def test_send_web_request_html_not_found(website):
 
 
 @pytest.mark.asyncio
+async def test_send_web_request_binary(website):
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+
+    async with aiohttp.ClientSession() as session:
+        web_client = WebClientAsync(logger, serializer, session)
+
+        response = await web_client.send_web_request("GET", website + "/Binary", response_content_type = "application/octet-stream")
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is not None
+        assert isinstance(response.data, bytes)
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+
+
+@pytest.mark.asyncio
 async def test_send_api_request_json(website):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()

@@ -261,7 +261,8 @@ class WebClientAsync:
             if response_content_as_text == "":
                 return None
             return response_content_as_text
-        return response.content
+
+        return await response.read()
 
 
     async def _handle_api_response_data(self, # pylint: disable = too-many-arguments, too-many-positional-arguments, too-many-return-statements

@@ -1,4 +1,5 @@
 import argparse
+import base64
 import http
 
 import flask
@@ -32,6 +33,7 @@ def register_routes(flask_application: flask.Flask) -> None:
     flask_application.add_url_rule("/", methods = [ "GET" ], view_func = home)
     flask_application.add_url_rule("/Html", methods = [ "GET" ], view_func = html_reponse)
     flask_application.add_url_rule("/HtmlNotFound", methods = [ "GET" ], view_func = html_reponse_notfound)
+    flask_application.add_url_rule("/Binary", methods = [ "GET" ], view_func = binary_response)
     flask_application.add_url_rule("/Json", methods = [ "GET" ], view_func = json_response)
     flask_application.add_url_rule("/JsonNotFound", methods = [ "GET" ], view_func = json_reponse_notfound)
     flask_application.add_url_rule("/Upload", methods = [ "POST" ], view_func = upload)
@@ -65,6 +67,10 @@ def html_reponse() -> flask.Response:
 
 def html_reponse_notfound() -> flask.Response:
     return flask.Response(status = http.HTTPStatus.NOT_FOUND, mimetype = "text/html")
+
+
+def binary_response() -> flask.Response:
+    return flask.Response(base64.b64encode(b"Okay"), mimetype = "application/octet-stream")
 
 
 def json_response() -> flask.Response:
