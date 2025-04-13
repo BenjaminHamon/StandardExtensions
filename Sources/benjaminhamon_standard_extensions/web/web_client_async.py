@@ -4,6 +4,8 @@ from typing import Any, Awaitable, Callable, Optional
 import uuid
 
 import aiohttp
+import multidict
+import yarl
 
 from benjaminhamon_standard_extensions.serialization.serializer import Serializer
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
@@ -28,10 +30,15 @@ class WebClientAsync:
 
 
     async def send_web_request(self, # pylint: disable = too-many-arguments
-            method: str, url: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, data: Optional[Any] = None,
+            method: str,
+            url: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            data: Optional[Any] = None,
             response_content_type: Optional[str] = None,
+            simulate: bool = False,
         ) -> WebResponse:
 
         async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
@@ -42,14 +49,21 @@ class WebClientAsync:
             headers.update(extra_headers)
 
         return await self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, data = data, response_content_type = response_content_type)
+                check = check, headers = headers, parameters = parameters, data = data,
+                response_content_type = response_content_type, simulate = simulate)
 
 
     async def send_api_request(self, # pylint: disable = too-many-arguments
-            method: str, url: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, data: Optional[dict] = None,
-            response_content_type: Optional[str] = None, response_obj_type: Optional[type] = None,
+            method: str,
+            url: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            data: Optional[dict] = None,
+            response_content_type: Optional[str] = None,
+            response_obj_type: Optional[type] = None,
+            simulate: bool = False,
         ) -> WebResponse:
 
         async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]:
@@ -70,13 +84,20 @@ class WebClientAsync:
             response_content_type = self._serializer.get_content_type()
 
         return await self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, data = serialized_data, response_content_type = response_content_type)
+                check = check, headers = headers, parameters = parameters, data = serialized_data,
+                response_content_type = response_content_type, simulate = simulate)
 
 
     async def upload(self, # pylint: disable = too-many-arguments
-            url: str, local_file_path: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, content_type: Optional[str] = None) -> WebResponse:
+            url: str,
+            local_file_path: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            content_type: Optional[str] = None,
+            simulate: bool = False,
+        ) -> WebResponse:
 
         async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
             return None
@@ -89,13 +110,19 @@ class WebClientAsync:
 
         with open(local_file_path, mode = "rb") as local_file:
             return await self._send_request_internal("POST", url, handle_data,
-                    check = check, headers = headers, parameters = parameters, data = local_file)
+                    check = check, headers = headers, parameters = parameters, data = local_file, simulate = simulate)
 
 
     async def download(self, # pylint: disable = too-many-arguments, too-many-locals
-            url: str, local_file_path: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, response_content_type: Optional[str] = None) -> WebResponse:
+            url: str,
+            local_file_path: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            response_content_type: Optional[str] = None,
+            simulate: bool = False,
+        ) -> WebResponse:
 
         async def handle_data(request_identifier: str, response: aiohttp.ClientResponse) -> Optional[Any]: # pylint: disable = unused-argument
             return await self._handle_download_response_data(local_file_path, response)
@@ -109,16 +136,21 @@ class WebClientAsync:
             headers.update(extra_headers)
 
         return await self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, response_content_type = response_content_type)
+                check = check, headers = headers, parameters = parameters,
+                response_content_type = response_content_type, simulate = simulate)
 
 
-    async def _send_request_internal(self, # pylint: disable = too-many-arguments
-            method: str, url: str,
+    async def _send_request_internal(self, # pylint: disable = too-many-arguments, too-many-locals
+            method: str,
+            url: str,
             data_handler: Callable[[str,aiohttp.ClientResponse],Awaitable[Optional[Any]]],
             *,
-            check: bool = True, headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, data: Optional[Any] = None,
+            check: bool = True,
+            headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            data: Optional[Any] = None,
             response_content_type: Optional[str] = None,
+            simulate: bool = False,
         ) -> WebResponse:
 
         request_identifier = str(uuid.uuid4())
@@ -131,8 +163,11 @@ class WebClientAsync:
         self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
 
         try:
-            response = await self._session.request(method, url,
-                    headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
+            if simulate:
+                response = self._fake_response(method, url)
+            else:
+                response = await self._session.request(method, url,
+                        headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
         except aiohttp.ClientConnectionError as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 
@@ -152,6 +187,27 @@ class WebClientAsync:
 
         finally:
             response.close()
+
+
+    def _fake_response(self, method: str, url: str) -> aiohttp.ClientResponse:
+        request = aiohttp.ClientRequest(method, yarl.URL(url))
+
+        response = aiohttp.ClientResponse(
+            method = method,
+            url = yarl.URL(url),
+            writer = request._writer, # pylint: disable = protected-access
+            continue100 = request._continue, # pylint: disable = protected-access
+            timer = request._timer, # pylint: disable = protected-access
+            request_info = request.request_info,
+            traces = request._traces, # pylint: disable = protected-access
+            loop = request.loop,
+            session = request._session, # pylint: disable = protected-access
+        )
+
+        response._headers = multidict.CIMultiDictProxy(multidict.CIMultiDict()) # pylint: disable = protected-access
+        response.status = 200
+
+        return response
 
 
     def _check_response_status(self, request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse) -> None:

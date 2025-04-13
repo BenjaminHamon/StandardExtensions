@@ -27,10 +27,15 @@ class WebClient:
 
 
     def send_web_request(self, # pylint: disable = too-many-arguments
-            method: str, url: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, data: Optional[Any] = None,
+            method: str,
+            url: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            data: Optional[Any] = None,
             response_content_type: Optional[str] = None,
+            simulate: bool = False,
         ) -> WebResponse:
 
         def handle_data(request_identifier: str, response: requests.Response) -> Optional[Any]: # pylint: disable = unused-argument
@@ -41,14 +46,21 @@ class WebClient:
             headers.update(extra_headers)
 
         return self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, data = data, response_content_type = response_content_type)
+                check = check, headers = headers, parameters = parameters, data = data,
+                response_content_type = response_content_type, simulate = simulate)
 
 
     def send_api_request(self, # pylint: disable = too-many-arguments
-            method: str, url: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, data: Optional[dict] = None,
-            response_content_type: Optional[str] = None, response_obj_type: Optional[type] = None,
+            method: str,
+            url: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            data: Optional[dict] = None,
+            response_content_type: Optional[str] = None,
+            response_obj_type: Optional[type] = None,
+            simulate: bool = False,
         ) -> WebResponse:
 
         def handle_data(request_identifier: str, response: requests.Response) -> Optional[Any]:
@@ -69,13 +81,20 @@ class WebClient:
             response_content_type = self._serializer.get_content_type()
 
         return self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, data = serialized_data, response_content_type = response_content_type)
+                check = check, headers = headers, parameters = parameters, data = serialized_data,
+                response_content_type = response_content_type, simulate = simulate)
 
 
     def upload(self, # pylint: disable = too-many-arguments
-            url: str, local_file_path: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, content_type: Optional[str] = None) -> WebResponse:
+            url: str,
+            local_file_path: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            content_type: Optional[str] = None,
+            simulate: bool = False,
+        ) -> WebResponse:
 
         def handle_data(request_identifier: str, response: requests.Response) -> Optional[Any]: # pylint: disable = unused-argument
             return None
@@ -88,13 +107,19 @@ class WebClient:
 
         with open(local_file_path, mode = "rb") as local_file:
             return self._send_request_internal("POST", url, handle_data,
-                    check = check, headers = headers, parameters = parameters, data = local_file)
+                    check = check, headers = headers, parameters = parameters, data = local_file, simulate = simulate)
 
 
     def download(self, # pylint: disable = too-many-arguments
-            url: str, local_file_path: str, *,
-            check: bool = True, extra_headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, response_content_type: Optional[str] = None) -> WebResponse:
+            url: str,
+            local_file_path: str,
+            *,
+            check: bool = True,
+            extra_headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            response_content_type: Optional[str] = None,
+            simulate: bool = False,
+        ) -> WebResponse:
 
         def handle_data(request_identifier: str, response: requests.Response) -> Optional[Any]: # pylint: disable = unused-argument
             return self._handle_download_response_data(local_file_path, response)
@@ -108,15 +133,20 @@ class WebClient:
             headers.update(extra_headers)
 
         return self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, response_content_type = response_content_type)
+                check = check, headers = headers, parameters = parameters, response_content_type = response_content_type, simulate = simulate)
 
 
     def _send_request_internal(self, # pylint: disable = too-many-arguments
-            method: str, url: str, data_handler: Callable[[str,requests.Response],Optional[Any]],
+            method: str,
+            url: str,
+            data_handler: Callable[[str,requests.Response],Optional[Any]],
             *,
-            check: bool = True, headers: Optional[dict] = None,
-            parameters: Optional[dict] = None, data: Optional[Any] = None,
+            check: bool = True,
+            headers: Optional[dict] = None,
+            parameters: Optional[dict] = None,
+            data: Optional[Any] = None,
             response_content_type: Optional[str] = None,
+            simulate: bool = False,
         ) -> WebResponse:
 
         request_identifier = str(uuid.uuid4())
@@ -129,8 +159,11 @@ class WebClient:
         self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
 
         try:
-            response = requests.request(method, url,
-                headers = headers, params = parameters, data = data, stream = True, timeout = self.timeout.total_seconds())
+            if simulate:
+                response = self._fake_response()
+            else:
+                response = requests.request(method, url,
+                    headers = headers, params = parameters, data = data, stream = True, timeout = self.timeout.total_seconds())
         except requests.RequestException as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 
@@ -149,7 +182,14 @@ class WebClient:
             return WebResponse(request_identifier, dict(response.headers), response.status_code, response_data, response)
 
         finally:
-            response.close()
+            if not simulate:
+                response.close()
+
+
+    def _fake_response(self) -> requests.Response:
+        response = requests.Response()
+        response.status_code = 200
+        return response
 
 
     def _check_response_status(self, request_identifier: str, method: str, url: str, response: requests.Response) -> None:

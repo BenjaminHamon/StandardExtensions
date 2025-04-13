@@ -61,6 +61,22 @@ async def website_fixture():
 
 
 @pytest.mark.asyncio
+async def test_send_request_with_simulate():
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+
+    async with aiohttp.ClientSession() as session:
+        web_client = WebClientAsync(logger, serializer, session)
+
+        response = await web_client.send_web_request("GET", "http://localhost:4998/", simulate = True)
+
+        assert response is not None
+        assert response.status_code == 200
+        assert response.data is None
+        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+
+
+@pytest.mark.asyncio
 async def test_send_request_connection_error():
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
@@ -74,6 +90,7 @@ async def test_send_request_connection_error():
         assert isinstance(exception_info.value.__cause__, aiohttp.ClientConnectionError)
         assert exception_info.value.status_code is None
         assert exception_info.value.response is None
+
 
 @pytest.mark.asyncio
 async def test_send_web_request_html(website):

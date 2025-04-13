@@ -59,6 +59,19 @@ async def website_fixture():
         raise RuntimeError("Dummy website failed to terminate")
 
 
+def test_send_web_request_with_simulate():
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+    web_client = WebClient(logger, serializer)
+
+    response = web_client.send_web_request("GET", "http://localhost:4998/", simulate = True)
+
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
+
+
 def test_send_web_request_connection_error():
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
