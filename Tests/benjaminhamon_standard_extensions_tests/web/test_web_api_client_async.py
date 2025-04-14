@@ -29,8 +29,7 @@ async def service_fixture():
 
     command = [ sys.executable, script_path, "--address", address, "--port", str(port) ]
 
-    process = await asyncio.create_subprocess_exec(*command,
-        stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+    process = await asyncio.create_subprocess_exec(*command, stdin = subprocess.DEVNULL)
 
     try:
         response = requests.request("GET", service_url + "/", timeout = timeout_seconds)

@@ -7,6 +7,7 @@ import aiohttp
 import multidict
 import yarl
 
+from benjaminhamon_standard_extensions.web.form_data import FormData
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
 from benjaminhamon_standard_extensions.web.web_response import WebResponse
@@ -33,6 +34,7 @@ class WebClientAsync:
             extra_headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
             data: Optional[Any] = None,
+            data_as_form: Optional[FormData] = None,
             simulate: bool = False,
         ) -> WebResponse:
 
@@ -44,7 +46,7 @@ class WebClientAsync:
             headers.update(extra_headers)
 
         return await self._send_request_internal(method, url, handle_data,
-                check = check, headers = headers, parameters = parameters, data = data, simulate = simulate)
+                check = check, headers = headers, parameters = parameters, data = data, data_as_form = data_as_form, simulate = simulate)
 
 
     async def upload(self, # pylint: disable = too-many-arguments
@@ -99,7 +101,7 @@ class WebClientAsync:
                 check = check, headers = headers, parameters = parameters, simulate = simulate)
 
 
-    async def _send_request_internal(self, # pylint: disable = too-many-arguments
+    async def _send_request_internal(self, # pylint: disable = too-many-arguments, too-many-locals
             method: str,
             url: str,
             data_handler: Callable[[aiohttp.ClientResponse],Awaitable[Optional[Any]]],
@@ -108,8 +110,12 @@ class WebClientAsync:
             headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
             data: Optional[Any] = None,
+            data_as_form: Optional[FormData] = None,
             simulate: bool = False,
         ) -> WebResponse:
+
+        if data is not None and data_as_form is not None:
+            raise ValueError("Only one of 'data' and 'data_as_form' should be set")
 
         request_identifier = str(uuid.uuid4())
 
@@ -117,6 +123,12 @@ class WebClientAsync:
             headers = {}
         if self._authentication is not None:
             headers["Authorization"] = self._authentication
+
+        if data_as_form is not None:
+            data_as_form_for_aiohttp = aiohttp.FormData()
+            for field in data_as_form.fields:
+                data_as_form_for_aiohttp.add_field(field.key, field.value, filename = field.filename, content_type = field.content_type)
+            data = data_as_form_for_aiohttp
 
         self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
 

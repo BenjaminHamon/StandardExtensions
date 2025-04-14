@@ -1,10 +1,11 @@
 import datetime
 import logging
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional
 import uuid
 
 import requests
 
+from benjaminhamon_standard_extensions.web.form_data import FormData
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
 from benjaminhamon_standard_extensions.web.web_response import WebResponse
@@ -31,6 +32,7 @@ class WebClient:
             extra_headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
             data: Optional[Any] = None,
+            data_as_form: Optional[FormData] = None,
             simulate: bool = False,
         ) -> WebResponse:
 
@@ -42,7 +44,7 @@ class WebClient:
             headers.update(extra_headers)
 
         return self._send_request_internal(method, url, handle_data,
-                check = check, headers = extra_headers, parameters = parameters, data = data, simulate = simulate)
+                check = check, headers = extra_headers, parameters = parameters, data = data, data_as_form = data_as_form, simulate = simulate)
 
 
     def upload(self, # pylint: disable = too-many-arguments
@@ -97,7 +99,7 @@ class WebClient:
                 check = check, headers = headers, parameters = parameters, simulate = simulate)
 
 
-    def _send_request_internal(self, # pylint: disable = too-many-arguments
+    def _send_request_internal(self, # pylint: disable = too-many-arguments, too-many-locals
             method: str,
             url: str,
             data_handler: Callable[[requests.Response],Optional[Any]],
@@ -106,8 +108,12 @@ class WebClient:
             headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
             data: Optional[Any] = None,
+            data_as_form: Optional[FormData] = None,
             simulate: bool = False,
         ) -> WebResponse:
+
+        if data is not None and data_as_form is not None:
+            raise ValueError("Only one of 'data' and 'data_as_form' should be set")
 
         request_identifier = str(uuid.uuid4())
 
@@ -116,6 +122,12 @@ class WebClient:
         if self._authentication is not None:
             headers["Authorization"] = self._authentication
 
+        data_as_form_for_requests: Optional[Dict[str,tuple]] = None
+        if data_as_form is not None:
+            data_as_form_for_requests = {}
+            for field in data_as_form.fields:
+                data_as_form_for_requests[field.key] = (field.filename, field.value, field.content_type)
+
         self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
 
         try:
@@ -123,7 +135,8 @@ class WebClient:
                 response = self._fake_response()
             else:
                 response = self._session.request(method, url,
-                        headers = headers, params = parameters, data = data, stream = True, timeout = self.timeout.total_seconds())
+                        headers = headers, params = parameters, data = data, files = data_as_form_for_requests,
+                        stream = True, timeout = self.timeout.total_seconds())
         except requests.RequestException as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 

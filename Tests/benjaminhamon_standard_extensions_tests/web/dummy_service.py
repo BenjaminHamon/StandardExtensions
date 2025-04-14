@@ -1,5 +1,7 @@
 import argparse
 import http
+import logging
+import sys
 from typing import Any
 
 import flask
@@ -11,6 +13,7 @@ serializer = JsonSerializer()
 
 
 def main() -> None:
+    logging.basicConfig(stream = sys.stdout, level = logging.DEBUG)
     argument_parser = create_argument_parser()
     arguments = argument_parser.parse_args()
     run_website(arguments.address, arguments.port)
@@ -48,14 +51,22 @@ def home() -> flask.Response:
 
 
 def get_resource() -> flask.Response:
-    if len(flask.request.args) == 0:
+    try:
+        assert dict(flask.request.args) == { "key": "value" }
+    except Exception: # pylint: disable = broad-exception-caught
+        logging.error("Exception", exc_info = True)
         return create_response({ "status": "error" }, http.HTTPStatus.BAD_REQUEST)
+
     return create_response({ "key": "value" }, http.HTTPStatus.OK)
 
 
 def post_resource() -> flask.Response:
-    if len(flask.request.data) == 0:
+    try:
+        assert serializer.deserialize_from_string(flask.request.get_data(as_text = True), dict) == { "key": "value" }
+    except Exception: # pylint: disable = broad-exception-caught
+        logging.error("Exception", exc_info = True)
         return create_response({ "status": "error" }, http.HTTPStatus.BAD_REQUEST)
+
     return create_response({ "status": "okay" }, http.HTTPStatus.OK)
 
 
