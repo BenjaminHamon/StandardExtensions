@@ -113,7 +113,7 @@ def test_send_request_with_get(service):
     with requests.Session() as session:
         web_client = WebApiClient(logger, serializer, session)
 
-        response = web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_obj_type = dict)
+        response = web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200
@@ -129,7 +129,7 @@ def test_send_request_with_post(service):
     with requests.Session() as session:
         web_client = WebApiClient(logger, serializer, session)
 
-        response = web_client.send_request("POST", service + "/Resource", data = { "key": "value" }, response_obj_type = dict)
+        response = web_client.send_request("POST", service + "/Resource", data = { "key": "value" }, response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200
@@ -166,7 +166,7 @@ def test_send_request_with_unexcepted_obj_type(service):
         web_client = WebApiClient(logger, serializer, session)
 
         with pytest.raises(WebContentException) as exception_info:
-            web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_obj_type = int)
+            web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_success_obj_type = int)
 
         assert isinstance(exception_info.value.__cause__, SerializationException)
 
@@ -187,7 +187,7 @@ def test_send_request_not_found(service):
         web_client = WebApiClient(logger, serializer, session)
 
         with pytest.raises(WebStatusException) as exception_info:
-            web_client.send_request("GET", service + "/NotFound", response_obj_type = dict)
+            web_client.send_request("GET", service + "/NotFound", response_error_obj_type = dict)
 
         assert isinstance(exception_info.value.__cause__, requests.HTTPError)
 
@@ -215,7 +215,7 @@ def test_send_request_with_upload(tmpdir, service):
 
         with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
             response = web_client.send_request("POST", service + "/Upload",
-                    data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]), response_obj_type = dict)
+                    data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]), response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200

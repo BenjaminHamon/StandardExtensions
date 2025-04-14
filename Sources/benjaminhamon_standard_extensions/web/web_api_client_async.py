@@ -1,4 +1,5 @@
 import datetime
+import http
 import logging
 from typing import Any, Optional
 import uuid
@@ -27,6 +28,8 @@ class WebApiClientAsync:
         self._session = session
         self._authentication = authentication
 
+        self.default_response_success_obj_type: Optional[type] = None
+        self.default_response_error_obj_type: Optional[type] = None
         self.timeout = datetime.timedelta(seconds = 30)
 
 
@@ -39,7 +42,8 @@ class WebApiClientAsync:
             parameters: Optional[dict] = None,
             data: Optional[Any] = None,
             data_as_form: Optional[FormData] = None,
-            response_obj_type: Optional[type] = None,
+            response_success_obj_type: Optional[type] = None,
+            response_error_obj_type: Optional[type] = None,
             simulate: bool = False,
         ) -> WebResponse:
 
@@ -48,8 +52,10 @@ class WebApiClientAsync:
 
         request_identifier = str(uuid.uuid4())
 
-        if response_obj_type is None:
-            response_obj_type = type(None)
+        if response_success_obj_type is None:
+            response_success_obj_type = self.default_response_success_obj_type
+        if response_error_obj_type is None:
+            response_error_obj_type = self.default_response_error_obj_type
 
         headers = {
             "Accept": self._serializer.get_content_type(),
@@ -88,9 +94,18 @@ class WebApiClientAsync:
                 method, url, request_identifier, response.status, response_content_length if response_content_length is not None else "Unknown")
 
             if check:
-                self._check_response_content(request_identifier, method, url, response)
+                await self._check_response_content(request_identifier, method, url, response)
 
-            response_data = await self._handle_api_response_data(request_identifier, method, url, response, response_obj_type)
+            response_data = None
+            expected_obj_type = response_success_obj_type if response.ok else response_error_obj_type
+
+            try:
+                response_data = await self._handle_api_response_data(request_identifier, method, url, response, expected_obj_type)
+            except WebContentException as exception:
+                if check:
+                    raise
+                if exception.response is not None:
+                    response_data = exception.response.data
 
             if check:
                 self._check_response_status(request_identifier, method, url, response, response_data)
@@ -134,8 +149,11 @@ class WebApiClientAsync:
             raise WebStatusException(request_identifier, method, url, response.status, local_response) from exception
 
 
-    def _check_response_content(self,
+    async def _check_response_content(self,
             request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse) -> None:
+
+        if response.status == http.HTTPStatus.NO_CONTENT:
+            return
 
         expected_content_type = self._serializer.get_content_type()
         actual_content_type = response.headers.get("Content-Type")
@@ -145,7 +163,10 @@ class WebApiClientAsync:
             if expected_content_type not in (actual_content_type, media_type):
                 raise TypeError("Content type is not as expected (Actual: '%s', Expected: '%s')" % (actual_content_type, expected_content_type))
         except TypeError as exception:
-            local_response = WebResponse(request_identifier, dict(response.headers), response.status, None, response)
+            response_data = None
+            if media_type is not None and media_type.startswith("text/"):
+                response_data = await response.text()
+            local_response = WebResponse(request_identifier, dict(response.headers), response.status, response_data, response)
             raise WebContentException(request_identifier, method, url, response.status, local_response) from exception
 
 
@@ -157,19 +178,20 @@ class WebApiClientAsync:
 
 
     async def _handle_api_response_data(self, # pylint: disable = too-many-arguments, too-many-positional-arguments
-            request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse, expected_obj_type: type) -> Optional[Any]:
+            request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse, expected_obj_type: Optional[type]) -> Optional[Any]:
 
-        if expected_obj_type == type(None):
-            if response.status == 204:
+        if expected_obj_type is None:
+            if response.status == http.HTTPStatus.NO_CONTENT:
                 return None
             if response.content is None:
                 return None
 
         serialized_data = await response.text()
 
-        if expected_obj_type == type(None):
+        if expected_obj_type is None:
             if serialized_data == "":
                 return None
+            return serialized_data
 
         try:
             return self._serializer.deserialize_from_string(serialized_data, expected_obj_type)

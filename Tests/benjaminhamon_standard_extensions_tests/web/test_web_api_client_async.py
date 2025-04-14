@@ -118,7 +118,7 @@ async def test_send_request_with_get(service):
     async with aiohttp.ClientSession() as session:
         web_client = WebApiClientAsync(logger, serializer, session)
 
-        response = await web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_obj_type = dict)
+        response = await web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200
@@ -135,7 +135,7 @@ async def test_send_request_with_post(service):
     async with aiohttp.ClientSession() as session:
         web_client = WebApiClientAsync(logger, serializer, session)
 
-        response = await web_client.send_request("POST", service + "/Resource", data = { "key": "value" }, response_obj_type = dict)
+        response = await web_client.send_request("POST", service + "/Resource", data = { "key": "value" }, response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200
@@ -174,7 +174,7 @@ async def test_send_request_with_unexcepted_obj_type(service):
         web_client = WebApiClientAsync(logger, serializer, session)
 
         with pytest.raises(WebContentException) as exception_info:
-            await web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_obj_type = int)
+            await web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_success_obj_type = int)
 
         assert isinstance(exception_info.value.__cause__, SerializationException)
 
@@ -196,7 +196,7 @@ async def test_send_request_not_found(service):
         web_client = WebApiClientAsync(logger, serializer, session)
 
         with pytest.raises(WebStatusException) as exception_info:
-            await web_client.send_request("GET", service + "/NotFound", response_obj_type = dict)
+            await web_client.send_request("GET", service + "/NotFound", response_error_obj_type = dict)
 
         assert isinstance(exception_info.value.__cause__, aiohttp.ClientResponseError)
 
@@ -225,7 +225,7 @@ async def test_send_request_with_upload(tmpdir, service):
 
         with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
             response = await web_client.send_request("POST", service + "/Upload",
-                    data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]), response_obj_type = dict)
+                    data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]), response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200
