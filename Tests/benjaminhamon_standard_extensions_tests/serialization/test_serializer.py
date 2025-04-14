@@ -7,6 +7,7 @@ import pytest
 
 from benjaminhamon_standard_extensions.serialization.json_serializer import JsonSerializer
 from benjaminhamon_standard_extensions.serialization.serialization_converter import SerializationConverter
+from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
 from benjaminhamon_standard_extensions.serialization.serializer import Serializer
 from benjaminhamon_standard_extensions.serialization.yaml_serializer import YamlSerializer
 
@@ -116,22 +117,22 @@ def test_serialize_to_string_with_mismatched_types(serializer_type):
 
     data = None
     data_serialized = serializer.serialize_to_string(data)
-    with pytest.raises(TypeError):
+    with pytest.raises(SerializationException):
         serializer.deserialize_from_string(data_serialized, str)
 
     data = "StringValue"
     data_serialized = serializer.serialize_to_string(data)
-    with pytest.raises(TypeError):
+    with pytest.raises(SerializationException):
         serializer.deserialize_from_string(data_serialized, type(None))
 
     data = 123
     data_serialized = serializer.serialize_to_string(data)
-    with pytest.raises(TypeError):
+    with pytest.raises(SerializationException):
         serializer.deserialize_from_string(data_serialized, str)
 
     data = "StringValue"
     data_serialized = serializer.serialize_to_string(data)
-    with pytest.raises(TypeError):
+    with pytest.raises(SerializationException):
         serializer.deserialize_from_string(data_serialized, int)
 
 

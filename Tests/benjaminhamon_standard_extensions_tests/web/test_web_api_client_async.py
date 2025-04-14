@@ -12,6 +12,7 @@ import pytest_asyncio
 import requests
 
 from benjaminhamon_standard_extensions.serialization.json_serializer import JsonSerializer
+from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
 from benjaminhamon_standard_extensions.web.form_data import FormData
 from benjaminhamon_standard_extensions.web.form_data_field import FormDataField
 from benjaminhamon_standard_extensions.web.web_api_client_async import WebApiClientAsync
@@ -175,7 +176,7 @@ async def test_send_request_with_unexcepted_obj_type(service):
         with pytest.raises(WebContentException) as exception_info:
             await web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_obj_type = int)
 
-        assert isinstance(exception_info.value.__cause__, TypeError)
+        assert isinstance(exception_info.value.__cause__, SerializationException)
 
         response = exception_info.value.response
 

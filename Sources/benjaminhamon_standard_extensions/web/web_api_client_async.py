@@ -7,6 +7,7 @@ import aiohttp
 import multidict
 import yarl
 
+from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
 from benjaminhamon_standard_extensions.serialization.serializer import Serializer
 from benjaminhamon_standard_extensions.web.form_data import FormData
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
@@ -172,6 +173,6 @@ class WebApiClientAsync:
 
         try:
             return self._serializer.deserialize_from_string(serialized_data, expected_obj_type)
-        except TypeError as exception:
+        except SerializationException as exception:
             local_response = WebResponse(request_identifier, dict(response.headers), response.status, serialized_data, response)
             raise WebContentException(request_identifier, method, url, response.status, local_response) from exception
