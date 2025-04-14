@@ -44,6 +44,7 @@ def register_routes(flask_application: flask.Flask) -> None:
     flask_application.add_url_rule("/Nothing", methods = [ "GET" ], view_func = nothing)
     flask_application.add_url_rule("/BadContentType", methods = [ "GET" ], view_func = bad_content_type)
     flask_application.add_url_rule("/NotFound", methods = [ "GET" ], view_func = not_found)
+    flask_application.add_url_rule("/Upload", methods = [ "POST" ], view_func = upload)
 
 
 def home() -> flask.Response:
@@ -82,6 +83,19 @@ def bad_content_type() -> flask.Response:
 
 def not_found() -> flask.Response:
     return create_response({ "status": "error" }, http.HTTPStatus.NOT_FOUND)
+
+
+def upload() -> flask.Response:
+    try:
+        assert dict(flask.request.form) == {} # pylint: disable = use-implicit-booleaness-not-comparison
+        assert list(flask.request.files.keys()) == [ "file" ]
+        assert flask.request.files["file"].filename == "Uploaded.txt"
+        assert flask.request.files["file"].stream.read() == b"Okay"
+    except Exception: # pylint: disable = broad-exception-caught
+        logging.error("Exception", exc_info = True)
+        return create_response({ "status": "error" }, http.HTTPStatus.BAD_REQUEST)
+
+    return create_response({ "status": "okay" }, http.HTTPStatus.OK)
 
 
 def create_response(data: Any, status: http.HTTPStatus) -> flask.Response:

@@ -1,12 +1,13 @@
 import datetime
 import logging
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 import uuid
 
 import requests
 import requests.structures
 
 from benjaminhamon_standard_extensions.serialization.serializer import Serializer
+from benjaminhamon_standard_extensions.web.form_data import FormData
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
 from benjaminhamon_standard_extensions.web.web_response import WebResponse
@@ -27,27 +28,29 @@ class WebApiClient:
         self.timeout = datetime.timedelta(seconds = 30)
 
 
-    def send_request(self, # pylint: disable = too-many-arguments, too-many-locals
+    def send_request(self, # pylint: disable = too-many-arguments, too-many-locals, too-many-branches
             method: str,
             url: str,
             *,
             check: bool = True,
             extra_headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
-            data: Optional[dict] = None,
+            data: Optional[Any] = None,
+            data_as_form: Optional[FormData] = None,
             response_obj_type: Optional[type] = None,
             simulate: bool = False,
         ) -> WebResponse:
 
+        if data is not None and data_as_form is not None:
+            raise ValueError("Only one of 'data' and 'data_as_form' should be set")
+
         request_identifier = str(uuid.uuid4())
-        content_type = self._serializer.get_content_type()
 
         if response_obj_type is None:
             response_obj_type = type(None)
 
         headers = {
-            "Accept": content_type,
-            "Content-Type": content_type,
+            "Accept": self._serializer.get_content_type(),
         }
 
         if extra_headers is not None:
@@ -57,7 +60,14 @@ class WebApiClient:
 
         serialized_data = None
         if data is not None:
+            headers["Content-Type"] = self._serializer.get_content_type()
             serialized_data = self._serializer.serialize_to_string(data)
+
+        data_as_form_for_requests: Optional[Dict[str,tuple]] = None
+        if data_as_form is not None:
+            data_as_form_for_requests = {}
+            for field in data_as_form.fields:
+                data_as_form_for_requests[field.key] = (field.filename, field.value, field.content_type)
 
         self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
 
@@ -66,7 +76,8 @@ class WebApiClient:
                 response = self._fake_response()
             else:
                 response = self._session.request(method, url,
-                    headers = headers, params = parameters, data = serialized_data, stream = True, timeout = self.timeout.total_seconds())
+                        headers = headers, params = parameters, data = serialized_data, files = data_as_form_for_requests,
+                        stream = True, timeout = self.timeout.total_seconds())
         except requests.RequestException as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 

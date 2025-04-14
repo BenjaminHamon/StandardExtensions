@@ -11,6 +11,8 @@ import pytest_asyncio
 import requests
 
 from benjaminhamon_standard_extensions.serialization.json_serializer import JsonSerializer
+from benjaminhamon_standard_extensions.web.form_data import FormData
+from benjaminhamon_standard_extensions.web.form_data_field import FormDataField
 from benjaminhamon_standard_extensions.web.web_api_client import WebApiClient
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
@@ -192,6 +194,30 @@ def test_send_request_not_found(service):
 
         assert response is not None
         assert response.status_code == 404
+        assert response.data is not None
+        assert isinstance(response.data, dict)
+        assert isinstance(response.underlying_object, requests.Response)
+
+
+def test_send_request_with_upload(tmpdir, service):
+    logger = logging.getLogger("Tests")
+    serializer = JsonSerializer()
+
+    with requests.Session() as session:
+        web_client = WebApiClient(logger, serializer, session)
+
+        local_file_path = os.path.join(tmpdir, "Working", "ToUpload.txt")
+
+        os.makedirs(os.path.dirname(local_file_path))
+        with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
+            local_file.write("Okay")
+
+        with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
+            response = web_client.send_request("POST", service + "/Upload",
+                    data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]), response_obj_type = dict)
+
+        assert response is not None
+        assert response.status_code == 200
         assert response.data is not None
         assert isinstance(response.data, dict)
         assert isinstance(response.underlying_object, requests.Response)

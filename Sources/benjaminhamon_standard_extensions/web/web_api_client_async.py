@@ -8,6 +8,7 @@ import multidict
 import yarl
 
 from benjaminhamon_standard_extensions.serialization.serializer import Serializer
+from benjaminhamon_standard_extensions.web.form_data import FormData
 from benjaminhamon_standard_extensions.web.web_content_exception import WebContentException
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
 from benjaminhamon_standard_extensions.web.web_response import WebResponse
@@ -28,27 +29,29 @@ class WebApiClientAsync:
         self.timeout = datetime.timedelta(seconds = 30)
 
 
-    async def send_request(self, # pylint: disable = too-many-arguments, too-many-locals
+    async def send_request(self, # pylint: disable = too-many-arguments, too-many-locals, too-many-branches
             method: str,
             url: str,
             *,
             check: bool = True,
             extra_headers: Optional[dict] = None,
             parameters: Optional[dict] = None,
-            data: Optional[dict] = None,
+            data: Optional[Any] = None,
+            data_as_form: Optional[FormData] = None,
             response_obj_type: Optional[type] = None,
             simulate: bool = False,
         ) -> WebResponse:
 
+        if data is not None and data_as_form is not None:
+            raise ValueError("Only one of 'data' and 'data_as_form' should be set")
+
         request_identifier = str(uuid.uuid4())
-        content_type = self._serializer.get_content_type()
 
         if response_obj_type is None:
             response_obj_type = type(None)
 
         headers = {
-            "Accept": content_type,
-            "Content-Type": content_type,
+            "Accept": self._serializer.get_content_type(),
         }
 
         if extra_headers is not None:
@@ -56,9 +59,15 @@ class WebApiClientAsync:
         if self._authentication is not None:
             headers["Authorization"] = self._authentication
 
-        serialized_data = None
         if data is not None:
-            serialized_data = self._serializer.serialize_to_string(data)
+            headers["Content-Type"] = self._serializer.get_content_type()
+            data = self._serializer.serialize_to_string(data)
+
+        if data_as_form is not None:
+            data_as_form_for_aiohttp = aiohttp.FormData()
+            for field in data_as_form.fields:
+                data_as_form_for_aiohttp.add_field(field.key, field.value, filename = field.filename, content_type = field.content_type)
+            data = data_as_form_for_aiohttp
 
         self._logger.debug("(WebRequest) %s %s (Identifier: '%s')", method, url, request_identifier)
 
@@ -67,7 +76,7 @@ class WebApiClientAsync:
                 response = self._fake_response(method, url)
             else:
                 response = await self._session.request(method, url,
-                        headers = headers, params = parameters, data = serialized_data, timeout = self.timeout.total_seconds())
+                        headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
         except aiohttp.ClientConnectionError as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 
