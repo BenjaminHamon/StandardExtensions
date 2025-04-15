@@ -32,7 +32,7 @@ class WebApiClient:
         self.timeout = datetime.timedelta(seconds = 30)
 
 
-    def send_request(self, # pylint: disable = too-many-arguments, too-many-locals, too-many-branches
+    def send_request(self, # pylint: disable = too-many-arguments, too-many-locals
             method: str,
             url: str,
             *,
@@ -50,24 +50,10 @@ class WebApiClient:
             raise ValueError("Only one of 'data' and 'data_as_form' should be set")
 
         request_identifier = str(uuid.uuid4())
-
-        if response_success_obj_type is None:
-            response_success_obj_type = self.default_response_success_obj_type
-        if response_error_obj_type is None:
-            response_error_obj_type = self.default_response_error_obj_type
-
-        headers = {
-            "Accept": self._serializer.get_content_type(),
-        }
-
-        if extra_headers is not None:
-            headers.update(extra_headers)
-        if self._authentication is not None:
-            headers["Authorization"] = self._authentication
+        headers = self._prepare_headers(extra_headers = extra_headers, has_data = data is not None)
 
         serialized_data = None
         if data is not None:
-            headers["Content-Type"] = self._serializer.get_content_type()
             serialized_data = self._serializer.serialize_to_string(data)
 
         data_as_form_for_requests: Optional[Dict[str,tuple]] = None
@@ -89,35 +75,8 @@ class WebApiClient:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 
         try:
-            response_content_length = self._get_response_content_length(response)
-
-            self._logger.debug("(WebResponse) %s %s (Identifier: '%s', StatusCode: %s, ContentLength: %s)",
-                method, url, request_identifier, response.status_code, response_content_length if response_content_length is not None else "Unknown")
-
-            if check:
-                self._check_response_content(request_identifier, method, url, response)
-
-            response_data = None
-            expected_obj_type = response_success_obj_type if response.ok else response_error_obj_type
-
-            try:
-                response_data = self._handle_api_response_data(request_identifier, method, url, response, expected_obj_type)
-            except WebContentException as exception:
-                if check:
-                    raise
-                if exception.response is not None:
-                    response_data = exception.response.data
-
-            if check: # Check status after checking and handling content to have response data when possible
-                self._check_response_status(request_identifier, method, url, response, response_data)
-
-            return WebResponse(request_identifier, dict(response.headers), response.status_code, response_data, response)
-
-        except WebContentException:
-            if check: # Status exception takes priority over content exception
-                self._check_response_status(request_identifier, method, url, response, response_data = None)
-            raise
-
+            return self._handle_response(request_identifier, method, url, response,
+                    check = check, response_success_obj_type = response_success_obj_type, response_error_obj_type = response_error_obj_type)
         finally:
             if not simulate:
                 response.close()
@@ -128,6 +87,21 @@ class WebApiClient:
         response.status_code = 200
         response.headers = requests.structures.CaseInsensitiveDict({ "Content-Type": self._serializer.get_content_type() })
         return response
+
+
+    def _prepare_headers(self, *, extra_headers: Optional[dict] = None, has_data: bool = False) -> dict:
+        headers = {
+            "Accept": self._serializer.get_content_type(),
+        }
+
+        if extra_headers is not None:
+            headers.update(extra_headers)
+        if self._authentication is not None:
+            headers["Authorization"] = self._authentication
+        if has_data:
+            headers["Content-Type"] = self._serializer.get_content_type()
+
+        return headers
 
 
     def _check_response_status(self, # pylint: disable = too-many-arguments, too-many-positional-arguments
@@ -169,6 +143,47 @@ class WebApiClient:
         if content_length_value is not None and content_length_value != "":
             return int(content_length_value)
         return None
+
+
+    def _handle_response(self, # pylint: disable = too-many-arguments
+            request_identifier: str, method: str, url: str, response: requests.Response, *,
+            check: bool = True, response_success_obj_type: Optional[type] = None, response_error_obj_type: Optional[type] = None,
+        ) -> WebResponse:
+
+        if response_success_obj_type is None:
+            response_success_obj_type = self.default_response_success_obj_type
+        if response_error_obj_type is None:
+            response_error_obj_type = self.default_response_error_obj_type
+
+        try:
+            response_content_length = self._get_response_content_length(response)
+
+            self._logger.debug("(WebResponse) %s %s (Identifier: '%s', StatusCode: %s, ContentLength: %s)",
+                method, url, request_identifier, response.status_code, response_content_length if response_content_length is not None else "Unknown")
+
+            if check:
+                self._check_response_content(request_identifier, method, url, response)
+
+            response_data = None
+            expected_obj_type = response_success_obj_type if response.ok else response_error_obj_type
+
+            try:
+                response_data = self._handle_api_response_data(request_identifier, method, url, response, expected_obj_type)
+            except WebContentException as exception:
+                if check:
+                    raise
+                if exception.response is not None:
+                    response_data = exception.response.data
+
+            if check: # Check status after checking and handling content to have response data when possible
+                self._check_response_status(request_identifier, method, url, response, response_data)
+
+            return WebResponse(request_identifier, dict(response.headers), response.status_code, response_data, response)
+
+        except WebContentException:
+            if check: # Status exception takes priority over content exception
+                self._check_response_status(request_identifier, method, url, response, response_data = None)
+            raise
 
 
     def _handle_api_response_data(self, # pylint: disable = too-many-arguments, too-many-positional-arguments
