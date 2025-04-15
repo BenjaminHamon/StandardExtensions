@@ -108,10 +108,15 @@ class WebApiClient:
                 if exception.response is not None:
                     response_data = exception.response.data
 
-            if check:
+            if check: # Check status after checking and handling content to have response data when possible
                 self._check_response_status(request_identifier, method, url, response, response_data)
 
             return WebResponse(request_identifier, dict(response.headers), response.status_code, response_data, response)
+
+        except WebContentException:
+            if check: # Status exception takes priority over content exception
+                self._check_response_status(request_identifier, method, url, response, response_data = None)
+            raise
 
         finally:
             if not simulate:
