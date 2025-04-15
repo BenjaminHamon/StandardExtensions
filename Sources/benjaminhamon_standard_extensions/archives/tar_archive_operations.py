@@ -17,6 +17,7 @@ class TarArchiveOperations(ArchiveOperationsBase):
             raise ValueError("Unsupported compression: %s" % compression)
 
         self._compression = compression
+        self.log_individual_entries: bool = False
 
 
     def get_file_extension(self) -> str:
@@ -37,7 +38,8 @@ class TarArchiveOperations(ArchiveOperationsBase):
         with tarfile.open(archive_path, mode = mode, format = tarfile.GNU_FORMAT) as archive_file: # type: ignore
             for source, destination in mapping_collection:
                 destination = os.path.normpath(destination).replace("\\", "/")
-                logger.debug("+ '%s' => '%s'", source, destination)
+                if self.log_individual_entries:
+                    logger.debug("+ '%s' => '%s'", source, destination)
                 archive_file.add(source, destination)
 
 
@@ -62,6 +64,7 @@ class TarArchiveOperations(ArchiveOperationsBase):
         with tarfile.open(archive_path, mode = "r") as archive_file:
             for source in file_collection:
                 destination = os.path.normpath(os.path.join(extraction_directory, source))
-                logger.debug("+ '%s' => '%s'", source, destination)
+                if self.log_individual_entries:
+                    logger.debug("+ '%s' => '%s'", source, destination)
                 if not simulate:
                     archive_file.extract(source, extraction_directory)

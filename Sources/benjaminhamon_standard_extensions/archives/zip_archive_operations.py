@@ -18,6 +18,7 @@ class ZipArchiveOperations(ArchiveOperationsBase):
     def __init__(self, compression: int = zipfile.ZIP_STORED, compression_level: Optional[int] = None) -> None:
         self._compression = compression
         self._compression_level = compression_level
+        self.log_individual_entries: bool = False
 
 
     def get_file_extension(self) -> str:
@@ -28,7 +29,8 @@ class ZipArchiveOperations(ArchiveOperationsBase):
         with zipfile.ZipFile(archive_path + ".tmp", mode = "w", compression = self._compression, compresslevel = self._compression_level) as archive_file:
             for source, destination in mapping_collection:
                 destination = os.path.normpath(destination).replace("\\", "/")
-                logger.debug("+ '%s' => '%s'", source, destination)
+                if self.log_individual_entries:
+                    logger.debug("+ '%s' => '%s'", source, destination)
                 archive_file.write(source, destination, compress_type = self._compression, compresslevel = self._compression_level)
         os.replace(archive_path + ".tmp", archive_path)
 
@@ -54,7 +56,8 @@ class ZipArchiveOperations(ArchiveOperationsBase):
                 destination = os.path.normpath(os.path.join(extraction_directory, source))
                 patched_destination = os.path.normpath(os.path.join(extraction_directory, source.replace("\\", "/")))
 
-                logger.debug("+ '%s' => '%s'", source, destination)
+                if self.log_individual_entries:
+                    logger.debug("+ '%s' => '%s'", source, destination)
                 if not simulate:
                     archive_file.extract(source, extraction_directory)
 
