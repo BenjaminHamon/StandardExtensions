@@ -159,6 +159,9 @@ class WebApiClientAsync:
         actual_content_type = response.headers.get("Content-Type")
         media_type = actual_content_type.split(";")[0] if actual_content_type is not None else None
 
+        if actual_content_type is None:
+            return
+
         try:
             if expected_content_type not in (actual_content_type, media_type):
                 raise TypeError("Content type is not as expected (Actual: '%s', Expected: '%s')" % (actual_content_type, expected_content_type))
@@ -188,9 +191,10 @@ class WebApiClientAsync:
 
         serialized_data = await response.text()
 
+        if serialized_data == "":
+            return None
+
         if expected_obj_type is None:
-            if serialized_data == "":
-                return None
             return serialized_data
 
         try:
