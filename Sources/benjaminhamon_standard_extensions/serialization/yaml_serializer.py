@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
+from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
 from benjaminhamon_standard_extensions.serialization.serializer import Serializer
 from benjaminhamon_standard_extensions.serialization.serialization_converter import SerializationConverter
 
@@ -41,14 +42,24 @@ class YamlSerializer(Serializer):
 
 
     def deserialize_from_file(self, file_path: str, obj_type: type) -> Any:
-        with open(file_path, mode = "r", encoding = self.encoding) as data_file:
-            obj_as_serializable = yaml.safe_load(data_file)
-        return self._convert_from_serializable(obj_as_serializable, obj_type)
+        try:
+            with open(file_path, mode = "r", encoding = self.encoding) as data_file:
+                obj_as_serializable = yaml.safe_load(data_file)
+            return self._convert_from_serializable(obj_as_serializable, obj_type)
+        except Exception as exception:
+            if isinstance(exception, (TypeError, yaml.YAMLError)):
+                raise SerializationException() from exception
+            raise
 
 
     def deserialize_from_string(self, obj_serialized: str, obj_type: type) -> Any:
-        obj_as_serializable = yaml.safe_load(obj_serialized)
-        return self._convert_from_serializable(obj_as_serializable, obj_type)
+        try:
+            obj_as_serializable = yaml.safe_load(obj_serialized)
+            return self._convert_from_serializable(obj_as_serializable, obj_type)
+        except Exception as exception:
+            if isinstance(exception, (TypeError, yaml.YAMLError)):
+                raise SerializationException() from exception
+            raise
 
 
     def _convert_from_serializable(self, obj_as_serializable: Any, obj_type: type) -> Any:

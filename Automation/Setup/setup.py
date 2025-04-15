@@ -31,7 +31,7 @@ async def setup_workspace(simulate: bool = False) -> None:
 
     python_system_executable = python_helpers.resolve_system_python_executable()
     venv_python_executable = python_helpers.get_venv_executable(venv_directory, "python")
-    python_package_collection = [ os.path.join("Automation", "Scripts[dev]") ]
+    python_package_collection = [ os.path.join("Automation", "Scripts") ]
 
     logger.info("Setting up python virtual environment for automation (Path: %s)", venv_directory)
     await python_helpers.setup_virtual_environment(python_system_executable, venv_directory, pip_configuration_file_path, simulate = simulate)

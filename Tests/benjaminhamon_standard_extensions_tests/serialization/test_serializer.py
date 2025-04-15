@@ -7,6 +7,7 @@ import pytest
 
 from benjaminhamon_standard_extensions.serialization.json_serializer import JsonSerializer
 from benjaminhamon_standard_extensions.serialization.serialization_converter import SerializationConverter
+from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
 from benjaminhamon_standard_extensions.serialization.serializer import Serializer
 from benjaminhamon_standard_extensions.serialization.yaml_serializer import YamlSerializer
 
@@ -79,6 +80,11 @@ class _MyCollectionItemSerializationConverter(SerializationConverter):
 def test_serialize_to_string(serializer_type):
     serializer = create_serializer(serializer_type)
 
+    data = None
+    data_serialized = serializer.serialize_to_string(data)
+    data_deserialized = serializer.deserialize_from_string(data_serialized, type(data))
+    assert data_deserialized == data
+
     data = 123
     data_serialized = serializer.serialize_to_string(data)
     data_deserialized = serializer.deserialize_from_string(data_serialized, type(data))
@@ -109,14 +115,24 @@ def test_serialize_to_string(serializer_type):
 def test_serialize_to_string_with_mismatched_types(serializer_type):
     serializer = create_serializer(serializer_type)
 
-    data = 123
+    data = None
     data_serialized = serializer.serialize_to_string(data)
-    with pytest.raises(TypeError):
+    with pytest.raises(SerializationException):
         serializer.deserialize_from_string(data_serialized, str)
 
     data = "StringValue"
     data_serialized = serializer.serialize_to_string(data)
-    with pytest.raises(TypeError):
+    with pytest.raises(SerializationException):
+        serializer.deserialize_from_string(data_serialized, type(None))
+
+    data = 123
+    data_serialized = serializer.serialize_to_string(data)
+    with pytest.raises(SerializationException):
+        serializer.deserialize_from_string(data_serialized, str)
+
+    data = "StringValue"
+    data_serialized = serializer.serialize_to_string(data)
+    with pytest.raises(SerializationException):
         serializer.deserialize_from_string(data_serialized, int)
 
 
@@ -126,6 +142,11 @@ def test_serialize_to_file(tmpdir, serializer_type):
     file_path = os.path.join(tmpdir, "Working", "Data" + serializer.get_file_extension())
 
     os.makedirs(os.path.dirname(file_path))
+
+    data = None
+    serializer.serialize_to_file(data, file_path)
+    data_deserialized = serializer.deserialize_from_file(file_path, type(data))
+    assert data_deserialized == data
 
     data = 123
     serializer.serialize_to_file(data, file_path)
