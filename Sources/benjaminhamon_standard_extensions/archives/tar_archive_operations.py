@@ -13,6 +13,9 @@ class TarArchiveOperations(ArchiveOperationsBase):
 
 
     def __init__(self, compression: Optional[str] = None) -> None:
+        if compression not in [ None, "bz2", "gz" ]:
+            raise ValueError("Unsupported compression: %s" % compression)
+
         self._compression = compression
 
 
@@ -30,7 +33,7 @@ class TarArchiveOperations(ArchiveOperationsBase):
     def _create_implementation(self, archive_path: str, mapping_collection: List[Tuple[str, str]]) -> None:
         mode = "w" if self._compression is None else "w:" + self._compression
 
-        # VSCode shows reportCallIssue here, apparently because it doesn't detects all allowed values for mode
+        # VSCode shows reportCallIssue here because the open function expects a literal but compression is detected as str
         with tarfile.open(archive_path, mode = mode, format = tarfile.GNU_FORMAT) as archive_file: # type: ignore
             for source, destination in mapping_collection:
                 destination = os.path.normpath(destination).replace("\\", "/")
