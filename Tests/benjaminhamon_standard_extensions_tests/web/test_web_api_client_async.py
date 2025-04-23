@@ -1,15 +1,11 @@
 """ Unit tests for WebServiceClient """
 
-import asyncio
 import logging
 import os
-import subprocess
-import sys
 
 import aiohttp
 import pytest
 import pytest_asyncio
-import requests
 
 from benjaminhamon_standard_extensions.serialization.json_serializer import JsonSerializer
 from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
@@ -20,46 +16,17 @@ from benjaminhamon_standard_extensions.web.web_content_exception import WebConte
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
 from benjaminhamon_standard_extensions.web.web_status_exception import WebStatusException
 
+from .website_runner import WebsiteRunner
+
 
 @pytest_asyncio.fixture(name = "service", scope = "module", loop_scope = "module")
 async def service_fixture():
-    timeout_seconds = 5
-
     script_path = os.path.join(os.path.dirname(__file__), "dummy_service.py")
     address = "localhost"
     port = 4999
-    service_url = "http://" + address + ":" + str(port)
 
-    command = [ sys.executable, script_path, "--address", address, "--port", str(port) ]
-
-    process = await asyncio.create_subprocess_exec(*command, stdin = subprocess.DEVNULL)
-
-    try:
-        response = requests.request("GET", service_url + "/", timeout = timeout_seconds)
-        response.raise_for_status()
-    except requests.RequestException as exception:
-        raise RuntimeError("Dummy service failed to start") from exception
-
-    yield service_url
-
-    if process.returncode is None:
-        process.terminate()
-
-        try:
-            await asyncio.wait_for(process.wait(), timeout_seconds)
-        except asyncio.TimeoutError:
-            pass
-
-    if process.returncode is None:
-        process.kill()
-
-        try:
-            await asyncio.wait_for(process.wait(), timeout_seconds)
-        except asyncio.TimeoutError:
-            pass
-
-    if process.returncode is None:
-        raise RuntimeError("Dummy service failed to terminate")
+    async with WebsiteRunner(script_path, address, port) as website:
+        yield website.get_url()
 
 
 @pytest.mark.asyncio

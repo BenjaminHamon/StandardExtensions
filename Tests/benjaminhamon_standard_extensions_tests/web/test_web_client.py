@@ -1,10 +1,7 @@
 """ Unit tests for WebServiceClient """
 
-import asyncio
 import logging
 import os
-import subprocess
-import sys
 
 import pytest
 import pytest_asyncio
@@ -17,46 +14,17 @@ from benjaminhamon_standard_extensions.web.web_content_exception import WebConte
 from benjaminhamon_standard_extensions.web.web_request_exception import WebRequestException
 from benjaminhamon_standard_extensions.web.web_status_exception import WebStatusException
 
+from .website_runner import WebsiteRunner
+
 
 @pytest_asyncio.fixture(name = "website", scope = "module", loop_scope = "module")
 async def website_fixture():
-    timeout_seconds = 5
-
     script_path = os.path.join(os.path.dirname(__file__), "dummy_website.py")
     address = "localhost"
     port = 4999
-    website_url = "http://" + address + ":" + str(port)
 
-    command = [ sys.executable, script_path, "--address", address, "--port", str(port) ]
-
-    process = await asyncio.create_subprocess_exec(*command, stdin = subprocess.DEVNULL)
-
-    try:
-        response = requests.request("GET", website_url + "/", timeout = timeout_seconds)
-        response.raise_for_status()
-    except requests.RequestException as exception:
-        raise RuntimeError("Dummy website failed to start") from exception
-
-    yield website_url
-
-    if process.returncode is None:
-        process.terminate()
-
-        try:
-            await asyncio.wait_for(process.wait(), timeout_seconds)
-        except asyncio.TimeoutError:
-            pass
-
-    if process.returncode is None:
-        process.kill()
-
-        try:
-            await asyncio.wait_for(process.wait(), timeout_seconds)
-        except asyncio.TimeoutError:
-            pass
-
-    if process.returncode is None:
-        raise RuntimeError("Dummy website failed to terminate")
+    async with WebsiteRunner(script_path, address, port) as website:
+        yield website.get_url()
 
 
 def test_send_request_with_simulate():
