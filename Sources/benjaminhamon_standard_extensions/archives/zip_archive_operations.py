@@ -2,7 +2,6 @@
 
 import logging
 import os
-import shutil
 from typing import List, Optional, Tuple
 import zipfile
 
@@ -18,6 +17,7 @@ class ZipArchiveOperations(ArchiveOperationsBase):
     def __init__(self, compression: int = zipfile.ZIP_STORED, compression_level: Optional[int] = None) -> None:
         self._compression = compression
         self._compression_level = compression_level
+        self.log_individual_entries: bool = False
 
 
     def get_file_extension(self) -> str:
@@ -28,8 +28,9 @@ class ZipArchiveOperations(ArchiveOperationsBase):
         with zipfile.ZipFile(archive_path + ".tmp", mode = "w", compression = self._compression, compresslevel = self._compression_level) as archive_file:
             for source, destination in mapping_collection:
                 destination = os.path.normpath(destination).replace("\\", "/")
-                logger.debug("+ '%s' => '%s'", source, destination)
-                archive_file.write(source, destination, compress_type = self._compression, compresslevel = self._compression_level)
+                if self.log_individual_entries:
+                    logger.debug("+ '%s' => '%s'", source, destination)
+                archive_file.write(source, destination)
         os.replace(archive_path + ".tmp", archive_path)
 
 
@@ -52,14 +53,8 @@ class ZipArchiveOperations(ArchiveOperationsBase):
         with zipfile.ZipFile(archive_path, mode = "r") as archive_file:
             for source in file_collection:
                 destination = os.path.normpath(os.path.join(extraction_directory, source))
-                patched_destination = os.path.normpath(os.path.join(extraction_directory, source.replace("\\", "/")))
 
-                logger.debug("+ '%s' => '%s'", source, destination)
+                if self.log_individual_entries:
+                    logger.debug("+ '%s' => '%s'", source, destination)
                 if not simulate:
                     archive_file.extract(source, extraction_directory)
-
-                if "\\" in source and destination != patched_destination:
-                    logger.debug("  the source contains a backslash, the file will be moved: '%s' => '%s'", destination, patched_destination)
-                    if not simulate:
-                        os.makedirs(os.path.dirname(patched_destination), exist_ok = True)
-                        shutil.move(destination, patched_destination)
