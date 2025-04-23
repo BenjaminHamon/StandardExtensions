@@ -36,7 +36,7 @@ class WebsiteRunner:
             self._process = await asyncio.create_subprocess_exec(*command, stdin = subprocess.DEVNULL)
         except subprocess.CalledProcessError as exception:
             raise RuntimeError("Website process failed to start") from exception
-        
+
         # The method check_is_running can fail if called too quickly, only on Linux apparently.
         # This sleep should not be necessary as there should be request retries, but for reason it fails regardless.
         await asyncio.sleep(0.5)
@@ -46,7 +46,7 @@ class WebsiteRunner:
 
     def get_url(self) -> str:
         return "http://" + self.address + ":" + str(self.port)
-    
+
 
     def check_is_running(self) -> None:
         if self._process is None or self._process.returncode is not None:
@@ -81,5 +81,5 @@ class WebsiteRunner:
 
         if self._process.returncode is None:
             raise RuntimeError("Website process failed to stop")
-        
+
         self._process = None
