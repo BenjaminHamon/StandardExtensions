@@ -2,8 +2,10 @@
 
 import asyncio
 import datetime
+import os
 import platform
 import signal
+import sys
 
 import pytest
 
@@ -24,7 +26,7 @@ def get_expected_termination_exit_code() -> int:
 @pytest.mark.asyncio
 async def test_run_success():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "pass" ])
 
     options = ProcessOptions(
@@ -46,7 +48,7 @@ async def test_run_success():
 @pytest.mark.asyncio
 async def test_run_failure():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "raise RuntimeError" ])
 
     options = ProcessOptions(
@@ -63,8 +65,8 @@ async def test_run_failure():
 
     status = watcher.get_status()
 
-    assert status.executable_name == "python"
-    assert status.executable_path == "python"
+    assert status.executable_name == os.path.basename(sys.executable)
+    assert status.executable_path == sys.executable
     assert status.pid > 0
     assert not status.is_running
     assert status.exit_code == 1
@@ -73,7 +75,7 @@ async def test_run_failure():
 @pytest.mark.asyncio
 async def test_terminate():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "import time; time.sleep(10)" ])
 
     options = ProcessOptions(
@@ -101,7 +103,7 @@ async def test_terminate():
 @pytest.mark.asyncio
 async def test_run_timeout():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "import time; time.sleep(10)" ])
 
     options = ProcessOptions(
@@ -135,7 +137,7 @@ async def test_run_timeout():
 @pytest.mark.asyncio
 async def test_output_timeout():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "import time; print('before'); time.sleep(10); print('after')" ])
 
     options = ProcessOptions(
@@ -169,7 +171,7 @@ async def test_output_timeout():
 @pytest.mark.asyncio
 async def test_output():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "print('hello')" ])
 
     options = ProcessOptions(
@@ -197,7 +199,7 @@ async def test_output():
 @pytest.mark.asyncio
 async def test_output_stderr():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "import sys; print('hello stderr', file = sys.stderr)" ])
 
     options = ProcessOptions(
@@ -225,7 +227,7 @@ async def test_output_stderr():
 @pytest.mark.asyncio
 async def test_output_unicode():
     spawner = ProcessSpawner(is_console = True)
-    command = ExecutableCommand("python")
+    command = ExecutableCommand(sys.executable)
     command.add_arguments([ "-c", "print('… é ² √ 👍')" ])
 
     options = ProcessOptions(
