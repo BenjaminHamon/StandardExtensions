@@ -31,7 +31,7 @@ class ZipArchiveOperations(ArchiveOperationsBase):
                 destination = os.path.normpath(destination).replace("\\", "/")
                 if self.log_individual_entries:
                     logger.debug("+ '%s' => '%s'", source, destination)
-                archive_file.write(source, destination, compress_type = self._compression, compresslevel = self._compression_level)
+                archive_file.write(source, destination)
         os.replace(archive_path + ".tmp", archive_path)
 
 
