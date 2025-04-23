@@ -2,7 +2,6 @@
 
 import logging
 import os
-import shutil
 from typing import List, Optional, Tuple
 import zipfile
 
@@ -54,15 +53,8 @@ class ZipArchiveOperations(ArchiveOperationsBase):
         with zipfile.ZipFile(archive_path, mode = "r") as archive_file:
             for source in file_collection:
                 destination = os.path.normpath(os.path.join(extraction_directory, source))
-                patched_destination = os.path.normpath(os.path.join(extraction_directory, source.replace("\\", "/")))
 
                 if self.log_individual_entries:
                     logger.debug("+ '%s' => '%s'", source, destination)
                 if not simulate:
                     archive_file.extract(source, extraction_directory)
-
-                if "\\" in source and destination != patched_destination:
-                    logger.debug("  the source contains a backslash, the file will be moved: '%s' => '%s'", destination, patched_destination)
-                    if not simulate:
-                        os.makedirs(os.path.dirname(patched_destination), exist_ok = True)
-                        shutil.move(destination, patched_destination)

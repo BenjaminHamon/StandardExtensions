@@ -1,9 +1,11 @@
 # cspell:words fileset
 
+import io
 import os
+import platform
+import tarfile
 import zipfile
 
-import py
 import pytest
 
 from benjaminhamon_standard_extensions.archives.archive_operations import ArchiveOperations
@@ -41,7 +43,7 @@ def instantiate_implementation(implementation: str) -> ArchiveOperations:
 
 
 @pytest.mark.parametrize("implementation", list_implementations())
-def test_create(tmpdir: py.path.local, implementation: str):
+def test_create(tmpdir, implementation: str):
     operations = instantiate_implementation(implementation)
 
     archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
@@ -63,7 +65,7 @@ def test_create(tmpdir: py.path.local, implementation: str):
 
 
 @pytest.mark.parametrize("implementation", list_implementations())
-def test_list_files(tmpdir: py.path.local, implementation: str):
+def test_list_files(tmpdir, implementation: str):
     operations = instantiate_implementation(implementation)
 
     archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
@@ -86,7 +88,7 @@ def test_list_files(tmpdir: py.path.local, implementation: str):
 
 
 @pytest.mark.parametrize("implementation", list_implementations())
-def test_verify(tmpdir: py.path.local, implementation: str):
+def test_verify(tmpdir, implementation: str):
     operations = instantiate_implementation(implementation)
 
     archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
@@ -105,7 +107,7 @@ def test_verify(tmpdir: py.path.local, implementation: str):
 
 
 @pytest.mark.parametrize("implementation", list_implementations())
-def test_verify_corrupted(tmpdir: py.path.local, implementation: str):
+def test_verify_corrupted(tmpdir, implementation: str):
     operations = instantiate_implementation(implementation)
 
     archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
@@ -129,7 +131,7 @@ def test_verify_corrupted(tmpdir: py.path.local, implementation: str):
 
 
 @pytest.mark.parametrize("implementation", list_implementations())
-def test_extract(tmpdir: py.path.local, implementation: str):
+def test_extract(tmpdir, implementation: str):
     operations = instantiate_implementation(implementation)
 
     archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
@@ -153,7 +155,7 @@ def test_extract(tmpdir: py.path.local, implementation: str):
 
 
 @pytest.mark.parametrize("implementation", list_implementations())
-def test_extract_replace(tmpdir: py.path.local, implementation: str):
+def test_extract_replace(tmpdir, implementation: str):
     operations = instantiate_implementation(implementation)
 
     archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
@@ -183,7 +185,7 @@ def test_extract_replace(tmpdir: py.path.local, implementation: str):
 
 
 @pytest.mark.parametrize("implementation", list_implementations())
-def test_extract_keep(tmpdir: py.path.local, implementation: str):
+def test_extract_keep(tmpdir, implementation: str):
     operations = instantiate_implementation(implementation)
 
     archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
@@ -210,3 +212,28 @@ def test_extract_keep(tmpdir: py.path.local, implementation: str):
     for _, destination in fileset:
         assert os.path.exists(os.path.join(tmpdir, "Extraction", os.path.normpath(destination)))
     assert os.path.exists(extra_file_path)
+
+
+@pytest.mark.parametrize("implementation", list_implementations())
+def test_extract_with_bad_path_separator(tmpdir, implementation: str):
+    operations = instantiate_implementation(implementation)
+
+    def create_faulty_archive(archive_path: str) -> None:
+        if isinstance(operations, ZipArchiveOperations):
+            with zipfile.ZipFile(archive_path, mode = "w") as archive_file:
+                archive_file.writestr("Directory_A\\File_A_1", "")
+        if isinstance(operations, TarArchiveOperations):
+            with tarfile.open(archive_path, mode = "w") as archive_file:
+                archive_file.addfile(tarfile.TarInfo("Directory_A\\File_A_1"), io.StringIO("")) # type: ignore
+
+    archive_path = os.path.join(tmpdir, "Archive" + operations.get_file_extension())
+
+    create_faulty_archive(archive_path)
+    operations.extract(archive_path, os.path.join(tmpdir, "Extraction"))
+
+    if platform.system() == "Linux":
+        assert not os.path.exists(os.path.join(tmpdir, "Extraction", "Directory_A", "File_A_1"))
+        assert os.path.exists(os.path.join(tmpdir, "Extraction", "Directory_A\\File_A_1"))
+
+    if platform.system() == "Windows":
+        assert os.path.exists(os.path.join(tmpdir, "Extraction", "Directory_A", "File_A_1"))
