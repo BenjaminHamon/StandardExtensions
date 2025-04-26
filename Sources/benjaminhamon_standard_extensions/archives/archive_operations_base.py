@@ -13,6 +13,10 @@ logger = logging.getLogger("ArchiveOperations")
 class ArchiveOperationsBase(ArchiveOperations):
 
 
+    def __init__(self) -> None:
+        self.log_individual_entries: bool = False
+
+
     def create(self, archive_path: str, mapping_collection: List[Tuple[str,str]], *, simulate: bool = False) -> None:
         """ Create an archive with mappings of path sources and destinations """
 
@@ -68,7 +72,8 @@ class ArchiveOperationsBase(ArchiveOperations):
         for file_path in file_collection:
             source = os.path.normpath(os.path.join(extraction_directory, file_path))
             destination = os.path.normpath(os.path.join(output_directory, file_path))
-            logger.debug("+ '%s' => '%s'", source, destination)
+            if self.log_individual_entries:
+                logger.debug("+ '%s' => '%s'", source, destination)
 
             if not simulate and not move_whole_directory:
                 if os.path.dirname(destination):

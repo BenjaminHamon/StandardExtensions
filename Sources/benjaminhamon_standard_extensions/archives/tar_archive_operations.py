@@ -13,11 +13,12 @@ class TarArchiveOperations(ArchiveOperationsBase):
 
 
     def __init__(self, compression: Optional[str] = None) -> None:
+        super().__init__()
+
         if compression not in [ None, "bz2", "gz" ]:
             raise ValueError("Unsupported compression: %s" % compression)
 
         self._compression = compression
-        self.log_individual_entries: bool = False
 
 
     def get_file_extension(self) -> str:

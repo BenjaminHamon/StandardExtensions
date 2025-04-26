@@ -15,9 +15,10 @@ class ZipArchiveOperations(ArchiveOperationsBase):
 
 
     def __init__(self, compression: int = zipfile.ZIP_STORED, compression_level: Optional[int] = None) -> None:
+        super().__init__()
+
         self._compression = compression
         self._compression_level = compression_level
-        self.log_individual_entries: bool = False
 
 
     def get_file_extension(self) -> str:
