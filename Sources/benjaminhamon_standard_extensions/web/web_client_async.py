@@ -87,7 +87,7 @@ class WebClientAsync:
         ) -> WebResponse:
 
         async def handle_data(response: aiohttp.ClientResponse) -> Optional[Any]:
-            return await self._handle_download_response_data(local_file_path, response)
+            return await self._handle_download_response_data(local_file_path, response, simulate = simulate)
 
         method = "GET"
 
@@ -232,7 +232,8 @@ class WebClientAsync:
         return await response.read()
 
 
-    async def _handle_download_response_data(self, local_file_path: str, response: aiohttp.ClientResponse) -> None:
-        with open(local_file_path, mode = "wb") as local_file:
-            async for chunk in response.content.iter_chunked(self.chunk_size):
-                local_file.write(chunk)
+    async def _handle_download_response_data(self, local_file_path: str, response: aiohttp.ClientResponse, *, simulate: bool = False) -> None:
+        if not simulate:
+            with open(local_file_path, mode = "wb") as local_file:
+                async for chunk in response.content.iter_chunked(self.chunk_size):
+                    local_file.write(chunk)

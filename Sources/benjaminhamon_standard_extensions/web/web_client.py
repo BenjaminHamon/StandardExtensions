@@ -85,7 +85,7 @@ class WebClient:
         ) -> WebResponse:
 
         def handle_data(response: requests.Response) -> Optional[Any]:
-            return self._handle_download_response_data(local_file_path, response)
+            return self._handle_download_response_data(local_file_path, response, simulate = simulate)
 
         method = "GET"
 
@@ -217,7 +217,8 @@ class WebClient:
         return response.content
 
 
-    def _handle_download_response_data(self, local_file_path: str, response: requests.Response) -> None:
-        with open(local_file_path, mode = "wb") as local_file:
-            for chunk in response.iter_content(self.chunk_size):
-                local_file.write(chunk)
+    def _handle_download_response_data(self, local_file_path: str, response: requests.Response, *, simulate: bool = False) -> None:
+        if not simulate:
+            with open(local_file_path, mode = "wb") as local_file:
+                for chunk in response.iter_content(self.chunk_size):
+                    local_file.write(chunk)
