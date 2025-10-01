@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "benjaminhamon-standard-extensions"
 version = "2.0.0+development"
 description = "Modules to extend the python standard library"
-requires-python = ">= 3.9"
+requires-python = ">= 3.11"
 
 authors = [
     { name = "Benjamin Hamon", email = "development@benjaminhamon.com" }
