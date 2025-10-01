@@ -131,7 +131,7 @@ async def test_send_request_with_form_and_file(tmpdir, website):
 
 
 @pytest.mark.asyncio
-async def test_send_request_with_unexcepted_content_type(website):
+async def test_send_request_with_unexpected_content_type(website):
     logger = logging.getLogger("Tests")
 
     async with aiohttp.ClientSession() as session:

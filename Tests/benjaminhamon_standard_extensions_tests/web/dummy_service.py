@@ -1,3 +1,5 @@
+# cspell:words booleaness
+
 import argparse
 import http
 import logging

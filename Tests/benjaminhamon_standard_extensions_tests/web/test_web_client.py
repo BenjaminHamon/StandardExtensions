@@ -124,7 +124,7 @@ def test_send_request_with_form_and_file(tmpdir, website):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_with_unexcepted_content_type(website):
+def test_send_request_with_unexpected_content_type(website):
     logger = logging.getLogger("Tests")
 
     with requests.Session() as session:
