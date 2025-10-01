@@ -1,4 +1,4 @@
-# cspell:words asyncio pylint pytest setuptools
+# cspell:words aiohttp asyncio dateutil pylint pytest setuptools
 
 [build-system]
 requires = [ "setuptools >= 64" ]
@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "benjaminhamon-standard-extensions"
 version = "2.0.0+development"
 description = "Modules to extend the python standard library"
-requires-python = ">= 3.9"
+requires-python = ">= 3.11"
 
 authors = [
     { name = "Benjamin Hamon", email = "development@benjaminhamon.com" }
@@ -29,18 +29,18 @@ dependencies = []
 
 [project.optional-dependencies]
 all = [
-    "aiohttp ~= 3.11.16",
+    "aiohttp ~= 3.12.15",
     "python-dateutil ~= 2.9.0",
-    "PyYAML ~= 6.0.2",
-    "requests ~= 2.32.3",
+    "PyYAML ~= 6.0.3",
+    "requests ~= 2.32.5",
 ]
 
 dev = [
-    "Flask ~= 3.1.0",
+    "Flask ~= 3.1.2",
     "mockito ~= 1.5.4",
-    "pylint ~= 3.3.6",
-    "pytest ~= 8.3.5",
-    "pytest-asyncio ~= 0.26.0",
+    "pylint ~= 3.3.8",
+    "pytest ~= 8.4.2",
+    "pytest-asyncio ~= 1.2.0",
     "pytest-json ~= 0.4.0",
 ]
 

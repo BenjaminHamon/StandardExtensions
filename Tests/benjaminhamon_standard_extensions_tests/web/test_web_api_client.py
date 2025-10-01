@@ -126,7 +126,7 @@ def test_send_request_with_unexpected_content_type(service):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_with_unexcepted_obj_type(service):
+def test_send_request_with_unexpected_obj_type(service):
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
