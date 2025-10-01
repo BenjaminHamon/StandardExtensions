@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "benjaminhamon-standard-extensions"
-version = "1.0.0+development"
+version = "2.0.0+development"
 description = "Modules to extend the python standard library"
 requires-python = ">= 3.9"
 
