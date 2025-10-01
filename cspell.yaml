@@ -14,8 +14,8 @@ ignorePaths:
   - "**/.pytest_cache/**"
   - "**/*.egg-info/**"
   - "Artifacts/**"
-  - "Sources/*/build/**"
-  - "Sources/*/dist/**"
+  - "Sources/build/**"
+  - "Sources/dist/**"
 
 words:
   - benjaminhamon
