@@ -1,15 +1,17 @@
 ---
 
-# cspell:words pycache venv
+# cspell:words pycache pytest venv
 
 files:
-  - "*"
+  - "**"
+  - "**/.*/**"
 
 ignorePaths:
   - ".git/**"
   - ".venv-automation/**"
   - ".venv/**"
   - "**/__pycache__/**"
+  - "**/.pytest_cache/**"
   - "**/*.egg-info/**"
   - "Artifacts/**"
   - "Sources/*/build/**"
