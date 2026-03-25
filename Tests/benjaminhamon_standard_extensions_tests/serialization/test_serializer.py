@@ -1,10 +1,12 @@
 """ Unit tests for Serializer and its implementations """
 
+import datetime
 import os
 from typing import Any, List, Optional
 
 import pytest
 
+from benjaminhamon_standard_extensions.serialization.datetime_serialization_converter import DatetimeSerializationConverter
 from benjaminhamon_standard_extensions.serialization.json_serializer import JsonSerializer
 from benjaminhamon_standard_extensions.serialization.serialization_converter import SerializationConverter
 from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
@@ -79,6 +81,7 @@ class _MyCollectionItemSerializationConverter(SerializationConverter):
 @pytest.mark.parametrize("serializer_type", all_serializer_types)
 def test_serialize_to_string(serializer_type):
     serializer = create_serializer(serializer_type)
+    serializer.add_converter(datetime.datetime, DatetimeSerializationConverter())
 
     data = None
     data_serialized = serializer.serialize_to_string(data)
@@ -106,6 +109,11 @@ def test_serialize_to_string(serializer_type):
     assert data_deserialized == data
 
     data = { "key": "value" }
+    data_serialized = serializer.serialize_to_string(data)
+    data_deserialized = serializer.deserialize_from_string(data_serialized, type(data))
+    assert data_deserialized == data
+
+    data = datetime.datetime(year = 2020, month = 1, day = 1, hour = 0, minute = 0)
     data_serialized = serializer.serialize_to_string(data)
     data_deserialized = serializer.deserialize_from_string(data_serialized, type(data))
     assert data_deserialized == data
@@ -139,6 +147,7 @@ def test_serialize_to_string_with_mismatched_types(serializer_type):
 @pytest.mark.parametrize("serializer_type", all_serializer_types)
 def test_serialize_to_file(tmpdir, serializer_type):
     serializer = create_serializer(serializer_type)
+    serializer.add_converter(datetime.datetime, DatetimeSerializationConverter())
     file_path = os.path.join(tmpdir, "Working", "Data" + serializer.get_file_extension())
 
     os.makedirs(os.path.dirname(file_path))
@@ -169,6 +178,11 @@ def test_serialize_to_file(tmpdir, serializer_type):
     assert data_deserialized == data
 
     data = { "key": "value" }
+    serializer.serialize_to_file(data, file_path)
+    data_deserialized = serializer.deserialize_from_file(file_path, type(data))
+    assert data_deserialized == data
+
+    data = datetime.datetime(year = 2020, month = 1, day = 1, hour = 0, minute = 0)
     serializer.serialize_to_file(data, file_path)
     data_deserialized = serializer.deserialize_from_file(file_path, type(data))
     assert data_deserialized == data

@@ -25,7 +25,7 @@ class DatetimeSerializationConverter(SerializationConverter):
         if obj is None:
             return None
 
-        if isinstance(obj, datetime.datetime):
+        if not isinstance(obj, datetime.datetime):
             raise ValueError("obj is not of the expected type")
 
         if obj.tzinfo == datetime.timezone.utc:
