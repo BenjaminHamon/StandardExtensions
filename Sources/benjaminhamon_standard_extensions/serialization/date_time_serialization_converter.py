@@ -8,7 +8,7 @@ import dateutil.parser
 from benjaminhamon_standard_extensions.serialization.serialization_converter import SerializationConverter
 
 
-class DatetimeSerializationConverter(SerializationConverter):
+class DateTimeSerializationConverter(SerializationConverter):
 
 
     def convert_from_serializable(self, obj_as_serializable: Any) -> Any:

@@ -6,7 +6,7 @@ from typing import Any, List, Optional
 
 import pytest
 
-from benjaminhamon_standard_extensions.serialization.datetime_serialization_converter import DatetimeSerializationConverter
+from benjaminhamon_standard_extensions.serialization.date_time_serialization_converter import DateTimeSerializationConverter
 from benjaminhamon_standard_extensions.serialization.json_serializer import JsonSerializer
 from benjaminhamon_standard_extensions.serialization.serialization_converter import SerializationConverter
 from benjaminhamon_standard_extensions.serialization.serialization_exception import SerializationException
@@ -81,7 +81,7 @@ class _MyCollectionItemSerializationConverter(SerializationConverter):
 @pytest.mark.parametrize("serializer_type", all_serializer_types)
 def test_serialize_to_string(serializer_type):
     serializer = create_serializer(serializer_type)
-    serializer.add_converter(datetime.datetime, DatetimeSerializationConverter())
+    serializer.add_converter(datetime.datetime, DateTimeSerializationConverter())
 
     data = None
     data_serialized = serializer.serialize_to_string(data)
@@ -147,7 +147,7 @@ def test_serialize_to_string_with_mismatched_types(serializer_type):
 @pytest.mark.parametrize("serializer_type", all_serializer_types)
 def test_serialize_to_file(tmpdir, serializer_type):
     serializer = create_serializer(serializer_type)
-    serializer.add_converter(datetime.datetime, DatetimeSerializationConverter())
+    serializer.add_converter(datetime.datetime, DateTimeSerializationConverter())
     file_path = os.path.join(tmpdir, "Working", "Data" + serializer.get_file_extension())
 
     os.makedirs(os.path.dirname(file_path))
