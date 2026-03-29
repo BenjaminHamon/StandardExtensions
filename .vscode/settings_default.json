@@ -1,7 +1,7 @@
 {
-	// cspell:words isort pytest venv
+	// cspell:words pylint pytest venv
 
-	"$schema": "./schema.json",
+	"$schema": "vscode://schemas/settings/user",
 
 	"files.exclude": {
         "Sources/*.egg-info": true,
@@ -9,27 +9,20 @@
         "Sources/dist": true,
 	},
 
-	"isort.args": [ "--settings-file", ".isort.cfg" ],
-
-	"python.analysis.typeCheckingMode": "basic",
-
 	// For sources
-	"python.defaultInterpreterPath": "${workspaceFolder}/.venv/scripts/python",
-
-	"python.analysis.extraPaths": [
-		"./Sources/",
-	],
-
+	//// "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+	"python.analysis.extraPaths": [ "Sources", "Tests" ],
+	"python.analysis.typeCheckingMode": "standard",
+	"python.testing.pytestArgs": [ "Tests" ],
 	"python.testing.pytestEnabled": true,
-	"python.testing.pytestArgs": [ "-c", "${workspaceFolder}/pytest.ini", "Tests" ],
+	"pylint.interpreter": [ "${workspaceFolder}/.venv/bin/python" ]
 
 	// // For automation
-	// "python.defaultInterpreterPath": "${workspaceFolder}/.venv-automation/scripts/python",
-
-	// "python.analysis.extraPaths": [
-	// 	"./Automation/Scripts",
-	// ],
-
+	// //// "python.defaultInterpreterPath": "${workspaceFolder}/.venv-automation/bin/python",
+	// "python.analysis.extraPaths": [ "Automation" ],
+	// "python.analysis.typeCheckingMode": "standard",
+	// "python.testing.pytestArgs": [ "Automation/Tests" ],
 	// "python.testing.pytestEnabled": true,
-	// "python.testing.pytestArgs": [ "-c", "${workspaceFolder}/pytest.ini", "Automation" ],
+	// "pylint.interpreter": [ "${workspaceFolder}/.venv-automation/bin/python" ]
+
 }
