@@ -42,8 +42,11 @@ class AsyncioContext:
         future = asyncio.ensure_future(coroutine)
 
         try:
-            while not self.should_shutdown and not future.done():
-                await asyncio.sleep(1)
+            try:
+                while not self.should_shutdown and not future.done():
+                    await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                pass
 
             if self.should_shutdown:
                 raise RuntimeError("Async operation was interrupted")
@@ -55,6 +58,13 @@ class AsyncioContext:
             try:
                 await asyncio.wait_for(future, timeout = self.shutdown_timeout_seconds)
             except asyncio.CancelledError:
+                pass
+
+            # Asyncio seems to, somehow, detect any KeyboardInterrupt exception and will reraise it.
+            # However, if we let one through here, asyncio considers that a task exception was never retrieved.
+            # This happens if the exception is raised explicitly by the coroutine, an actual interrupt by the user is caught by the signal handler.
+            # This asyncio behavior feels really weird and is furthermore hard to test because similarly, pytest does not like KeyboardInterrupt.
+            except KeyboardInterrupt:
                 pass
 
             if not future.done():
