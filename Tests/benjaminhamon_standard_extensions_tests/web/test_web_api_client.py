@@ -2,6 +2,9 @@
 
 import logging
 import os
+import sys
+from pathlib import Path
+from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -20,16 +23,19 @@ from .website_runner import WebsiteRunner
 
 
 @pytest_asyncio.fixture(name = "service", scope = "module", loop_scope = "module")
-async def service_fixture():
+async def service_fixture() -> AsyncGenerator[WebsiteRunner]:
+    python_executable = sys.executable
     script_path = os.path.join(os.path.dirname(__file__), "dummy_service.py")
     address = "localhost"
     port = 4999
 
-    async with WebsiteRunner(script_path, address, port) as website:
-        yield website.get_url()
+    command = [ python_executable, script_path, "--address", address, "--port", str(port) ]
+
+    async with WebsiteRunner(command, address, port) as website_runner:
+        yield website_runner
 
 
-def test_send_request_with_simulate():
+def test_send_request_with_simulate() -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -44,7 +50,7 @@ def test_send_request_with_simulate():
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_connection_error():
+def test_send_request_connection_error() -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -59,14 +65,14 @@ def test_send_request_connection_error():
         assert exception_info.value.response is None
 
 
-def test_send_request_with_none(service):
+def test_send_request_with_none(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
     with requests.Session() as session:
         web_client = WebApiClient(logger, serializer, session)
 
-        response = web_client.send_request("GET", service + "/Nothing")
+        response = web_client.send_request("GET", service.get_url() + "/Nothing")
 
         assert response is not None
         assert response.status_code == 200
@@ -74,14 +80,14 @@ def test_send_request_with_none(service):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_with_get(service):
+def test_send_request_with_get(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
     with requests.Session() as session:
         web_client = WebApiClient(logger, serializer, session)
 
-        response = web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_success_obj_type = dict)
+        response = web_client.send_request("GET", service.get_url() + "/Resource", parameters = { "key": "value" }, response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200
@@ -90,14 +96,14 @@ def test_send_request_with_get(service):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_with_post(service):
+def test_send_request_with_post(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
     with requests.Session() as session:
         web_client = WebApiClient(logger, serializer, session)
 
-        response = web_client.send_request("POST", service + "/Resource", data = { "key": "value" }, response_success_obj_type = dict)
+        response = web_client.send_request("POST", service.get_url() + "/Resource", data = { "key": "value" }, response_success_obj_type = dict)
 
         assert response is not None
         assert response.status_code == 200
@@ -106,7 +112,7 @@ def test_send_request_with_post(service):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_with_unexpected_content_type(service):
+def test_send_request_with_unexpected_content_type(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -114,7 +120,7 @@ def test_send_request_with_unexpected_content_type(service):
         web_client = WebApiClient(logger, serializer, session)
 
         with pytest.raises(WebContentException) as exception_info:
-            web_client.send_request("GET", service + "/BadContentType")
+            web_client.send_request("GET", service.get_url() + "/BadContentType")
 
         assert isinstance(exception_info.value.__cause__, TypeError)
 
@@ -126,7 +132,7 @@ def test_send_request_with_unexpected_content_type(service):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_with_unexpected_obj_type(service):
+def test_send_request_with_unexpected_obj_type(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -134,7 +140,7 @@ def test_send_request_with_unexpected_obj_type(service):
         web_client = WebApiClient(logger, serializer, session)
 
         with pytest.raises(WebContentException) as exception_info:
-            web_client.send_request("GET", service + "/Resource", parameters = { "key": "value" }, response_success_obj_type = int)
+            web_client.send_request("GET", service.get_url() + "/Resource", parameters = { "key": "value" }, response_success_obj_type = int)
 
         assert isinstance(exception_info.value.__cause__, SerializationException)
 
@@ -147,7 +153,7 @@ def test_send_request_with_unexpected_obj_type(service):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_not_found(service):
+def test_send_request_not_found(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
@@ -155,7 +161,7 @@ def test_send_request_not_found(service):
         web_client = WebApiClient(logger, serializer, session)
 
         with pytest.raises(WebStatusException) as exception_info:
-            web_client.send_request("GET", service + "/NotFound", response_error_obj_type = dict)
+            web_client.send_request("GET", service.get_url() + "/NotFound", response_error_obj_type = dict)
 
         assert isinstance(exception_info.value.__cause__, requests.HTTPError)
 
@@ -168,21 +174,21 @@ def test_send_request_not_found(service):
         assert isinstance(response.underlying_object, requests.Response)
 
 
-def test_send_request_with_upload(tmpdir, service):
+def test_send_request_with_upload(tmp_path: Path, service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
 
     with requests.Session() as session:
         web_client = WebApiClient(logger, serializer, session)
 
-        local_file_path = os.path.join(tmpdir, "Working", "ToUpload.txt")
+        local_file_path = tmp_path / "Working" / "ToUpload.txt"
 
-        os.makedirs(os.path.dirname(local_file_path))
+        os.makedirs(local_file_path.parent)
         with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
             local_file.write("Okay")
 
         with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
-            response = web_client.send_request("POST", service + "/Upload",
+            response = web_client.send_request("POST", service.get_url() + "/Upload",
                     data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]), response_success_obj_type = dict)
 
         assert response is not None
