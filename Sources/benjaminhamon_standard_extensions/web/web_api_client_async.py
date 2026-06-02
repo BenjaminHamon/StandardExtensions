@@ -69,7 +69,7 @@ class WebApiClientAsync:
                 response = self._fake_response(method, url)
             else:
                 response = await session.request(method, url,
-                        headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
+                        headers = headers, params = parameters, data = data, timeout = aiohttp.ClientTimeout(total = self.timeout.total_seconds()))
         except aiohttp.ClientConnectionError as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 
