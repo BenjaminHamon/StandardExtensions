@@ -38,161 +38,151 @@ async def service_fixture() -> AsyncGenerator[WebsiteRunner]:
 def test_send_request_with_simulate() -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
+        response = web_client.send_request(session, "GET", "http://localhost:4998/", simulate = True)
 
-        response = web_client.send_request("GET", "http://localhost:4998/", simulate = True)
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is None
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_request_connection_error() -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
-
         with pytest.raises(WebRequestException) as exception_info:
-            web_client.send_request("GET", "http://localhost:4998/")
+            web_client.send_request(session, "GET", "http://localhost:4998/")
 
-        assert isinstance(exception_info.value.__cause__, requests.RequestException)
-        assert exception_info.value.status_code is None
-        assert exception_info.value.response is None
+    assert isinstance(exception_info.value.__cause__, requests.RequestException)
+    assert exception_info.value.status_code is None
+    assert exception_info.value.response is None
 
 
 def test_send_request_with_none(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
+        response = web_client.send_request(session, "GET", service.get_url() + "/Nothing")
 
-        response = web_client.send_request("GET", service.get_url() + "/Nothing")
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is None
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_request_with_get(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
+        response = web_client.send_request(session, "GET", service.get_url() + "/Resource", parameters = { "key": "value" }, response_success_obj_type = dict)
 
-        response = web_client.send_request("GET", service.get_url() + "/Resource", parameters = { "key": "value" }, response_success_obj_type = dict)
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, dict)
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, dict)
+    assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_request_with_post(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
+        response = web_client.send_request(session, "POST", service.get_url() + "/Resource", data = { "key": "value" }, response_success_obj_type = dict)
 
-        response = web_client.send_request("POST", service.get_url() + "/Resource", data = { "key": "value" }, response_success_obj_type = dict)
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, dict)
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, dict)
+    assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_request_with_unexpected_content_type(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
-
         with pytest.raises(WebContentException) as exception_info:
-            web_client.send_request("GET", service.get_url() + "/BadContentType")
+            web_client.send_request(session, "GET", service.get_url() + "/BadContentType")
 
-        assert isinstance(exception_info.value.__cause__, TypeError)
+    assert isinstance(exception_info.value.__cause__, TypeError)
 
-        response = exception_info.value.response
+    response = exception_info.value.response
 
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is None
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_request_with_unexpected_obj_type(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
-
         with pytest.raises(WebContentException) as exception_info:
-            web_client.send_request("GET", service.get_url() + "/Resource", parameters = { "key": "value" }, response_success_obj_type = int)
+            web_client.send_request(session, "GET", service.get_url() + "/Resource", parameters = { "key": "value" }, response_success_obj_type = int)
 
-        assert isinstance(exception_info.value.__cause__, SerializationException)
+    assert isinstance(exception_info.value.__cause__, SerializationException)
 
-        response = exception_info.value.response
+    response = exception_info.value.response
 
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, str)
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, str)
+    assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_request_not_found(service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
-
         with pytest.raises(WebStatusException) as exception_info:
-            web_client.send_request("GET", service.get_url() + "/NotFound", response_error_obj_type = dict)
+            web_client.send_request(session, "GET", service.get_url() + "/NotFound", response_error_obj_type = dict)
 
-        assert isinstance(exception_info.value.__cause__, requests.HTTPError)
+    assert isinstance(exception_info.value.__cause__, requests.HTTPError)
 
-        response = exception_info.value.response
+    response = exception_info.value.response
 
-        assert response is not None
-        assert response.status_code == 404
-        assert response.data is not None
-        assert isinstance(response.data, dict)
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 404
+    assert response.data is not None
+    assert isinstance(response.data, dict)
+    assert isinstance(response.underlying_object, requests.Response)
 
 
 def test_send_request_with_upload(tmp_path: Path, service: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
     serializer = JsonSerializer()
+    web_client = WebApiClient(logger, serializer)
+    local_file_path = tmp_path / "Working" / "ToUpload.txt"
+
+    os.makedirs(local_file_path.parent)
+    with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
+        local_file.write("Okay")
 
     with requests.Session() as session:
-        web_client = WebApiClient(logger, serializer, session)
-
-        local_file_path = tmp_path / "Working" / "ToUpload.txt"
-
-        os.makedirs(local_file_path.parent)
-        with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
-            local_file.write("Okay")
-
         with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
-            response = web_client.send_request("POST", service.get_url() + "/Upload",
+            response = web_client.send_request(session, "POST", service.get_url() + "/Upload",
                     data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]), response_success_obj_type = dict)
 
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, dict)
-        assert isinstance(response.underlying_object, requests.Response)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, dict)
+    assert isinstance(response.underlying_object, requests.Response)

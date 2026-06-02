@@ -36,185 +36,173 @@ async def website_fixture() -> AsyncGenerator[WebsiteRunner]:
 @pytest.mark.asyncio
 async def test_send_request_with_simulate():
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
+        response = await web_client.send_request(session, "GET", "http://localhost:4998/", simulate = True)
 
-        response = await web_client.send_request("GET", "http://localhost:4998/", simulate = True)
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is None
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_send_request_connection_error():
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
-
         with pytest.raises(WebRequestException) as exception_info:
-            await web_client.send_request("GET", "http://localhost:4998/")
+            await web_client.send_request(session, "GET", "http://localhost:4998/")
 
-        assert isinstance(exception_info.value.__cause__, aiohttp.ClientConnectionError)
-        assert exception_info.value.status_code is None
-        assert exception_info.value.response is None
+    assert isinstance(exception_info.value.__cause__, aiohttp.ClientConnectionError)
+    assert exception_info.value.status_code is None
+    assert exception_info.value.response is None
 
 
 @pytest.mark.asyncio
 async def test_send_request_with_html(website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
+        response = await web_client.send_request(session, "GET", website.get_url() + "/")
 
-        response = await web_client.send_request("GET", website.get_url() + "/")
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, str)
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, str)
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_send_request_with_binary(website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
+        response = await web_client.send_request(session, "GET", website.get_url() + "/Binary")
 
-        response = await web_client.send_request("GET", website.get_url() + "/Binary")
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, bytes)
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, bytes)
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_send_request_with_form(website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
-
-        response = await web_client.send_request("POST", website.get_url() + "/Form",
+        response = await web_client.send_request(session, "POST", website.get_url() + "/Form",
                 data_as_form = FormData([ FormDataField("key", "value") ]))
 
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, str)
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, str)
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_send_request_with_form_and_file(tmp_path: Path, website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
+    local_file_path = tmp_path / "Working" / "ToUpload.txt"
+
+    os.makedirs(local_file_path.parent)
+    with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
+        local_file.write("Okay")
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
-
-        local_file_path = tmp_path / "Working" / "ToUpload.txt"
-
-        os.makedirs(local_file_path.parent)
-        with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
-            local_file.write("Okay")
-
         with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
-            response = await web_client.send_request("POST", website.get_url() + "/FormWithFile",
+            response = await web_client.send_request(session, "POST", website.get_url() + "/FormWithFile",
                     data_as_form = FormData([ FormDataField("file", local_file, "Uploaded.txt") ]))
 
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, str)
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, str)
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_send_request_with_unexpected_content_type(website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
-
         with pytest.raises(WebContentException) as exception_info:
-            await web_client.send_request("GET", website.get_url() + "/", extra_headers = { "Accept": "application/json" })
+            await web_client.send_request(session, "GET", website.get_url() + "/", extra_headers = { "Accept": "application/json" })
 
-        assert isinstance(exception_info.value.__cause__, TypeError)
+    assert isinstance(exception_info.value.__cause__, TypeError)
 
-        response = exception_info.value.response
+    response = exception_info.value.response
 
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is None
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_send_request_not_found(website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
-
         with pytest.raises(WebStatusException) as exception_info:
-            await web_client.send_request("GET", website.get_url() + "/NotFound")
+            await web_client.send_request(session, "GET", website.get_url() + "/NotFound")
 
-        assert isinstance(exception_info.value.__cause__, aiohttp.ClientResponseError)
+    assert isinstance(exception_info.value.__cause__, aiohttp.ClientResponseError)
 
-        response = exception_info.value.response
+    response = exception_info.value.response
 
-        assert response is not None
-        assert response.status_code == 404
-        assert response.data is None
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 404
+    assert response.data is None
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_upload(tmp_path: Path, website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
+    local_file_path = tmp_path / "Working" / "ToUpload.txt"
+
+    os.makedirs(local_file_path.parent)
+    with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
+        local_file.write("Okay")
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
+        response = await web_client.upload(session, "POST", website.get_url() + "/Upload", str(local_file_path))
 
-        local_file_path = tmp_path / "Working" / "ToUpload.txt"
-
-        os.makedirs(local_file_path.parent)
-        with open(local_file_path, mode = "w", encoding = "utf-8") as local_file:
-            local_file.write("Okay")
-
-        response = await web_client.upload("POST", website.get_url() + "/Upload", str(local_file_path))
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is not None
-        assert isinstance(response.data, str)
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is not None
+    assert isinstance(response.data, str)
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
 
 @pytest.mark.asyncio
 async def test_download(tmp_path: Path, website: WebsiteRunner) -> None:
     logger = logging.getLogger("Tests")
+    web_client = WebClientAsync(logger)
+    local_file_path = tmp_path / "Working" / "Downloaded.txt"
+
+    os.makedirs(local_file_path.parent)
 
     async with aiohttp.ClientSession() as session:
-        web_client = WebClientAsync(logger, session)
+        response = await web_client.download(session, website.get_url() + "/Download", str(local_file_path))
 
-        local_file_path = tmp_path / "Working" / "Downloaded.txt"
+    assert response is not None
+    assert response.status_code == 200
+    assert response.data is None
+    assert isinstance(response.underlying_object, aiohttp.ClientResponse)
 
-        os.makedirs(local_file_path.parent)
-        response = await web_client.download(website.get_url() + "/Download", str(local_file_path))
-
-        assert response is not None
-        assert response.status_code == 200
-        assert response.data is None
-        assert isinstance(response.underlying_object, aiohttp.ClientResponse)
-
-        assert os.path.exists(local_file_path)
-        with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
-            assert local_file.read() == "Okay"
+    assert os.path.exists(local_file_path)
+    with open(local_file_path, mode = "r", encoding = "utf-8") as local_file:
+        assert local_file.read() == "Okay"

@@ -17,9 +17,8 @@ from benjaminhamon_standard_extensions.web.web_status_exception import WebStatus
 class WebClientAsync:
 
 
-    def __init__(self, logger: logging.Logger, session: aiohttp.ClientSession, *, authentication: Optional[str] = None) -> None:
+    def __init__(self, logger: logging.Logger, *, authentication: Optional[str] = None) -> None:
         self._logger = logger
-        self._session = session
         self._authentication = authentication
 
         self.chunk_size: int = 1024 * 1024
@@ -27,6 +26,7 @@ class WebClientAsync:
 
 
     async def send_request(self, # pylint: disable = too-many-arguments
+            session: aiohttp.ClientSession,
             method: str,
             url: str,
             *,
@@ -45,11 +45,12 @@ class WebClientAsync:
         if extra_headers is not None:
             headers.update(extra_headers)
 
-        return await self._send_request_internal(method, url, handle_data,
+        return await self._send_request_internal(session, method, url, handle_data,
                 check = check, headers = headers, parameters = parameters, data = data, data_as_form = data_as_form, simulate = simulate)
 
 
     async def upload(self, # pylint: disable = too-many-arguments
+            session: aiohttp.ClientSession,
             method: str,
             url: str,
             local_file_path: str,
@@ -71,11 +72,12 @@ class WebClientAsync:
             headers.update(extra_headers)
 
         with open(local_file_path, mode = "rb") as local_file:
-            return await self._send_request_internal(method, url, handle_data,
+            return await self._send_request_internal(session, method, url, handle_data,
                     check = check, headers = headers, parameters = parameters, data = local_file, simulate = simulate)
 
 
     async def download(self, # pylint: disable = too-many-arguments
+            session: aiohttp.ClientSession,
             url: str,
             local_file_path: str,
             *,
@@ -97,11 +99,12 @@ class WebClientAsync:
         if extra_headers is not None:
             headers.update(extra_headers)
 
-        return await self._send_request_internal(method, url, handle_data,
+        return await self._send_request_internal(session, method, url, handle_data,
                 check = check, headers = headers, parameters = parameters, simulate = simulate)
 
 
     async def _send_request_internal(self, # pylint: disable = too-many-arguments, too-many-locals
+            session: aiohttp.ClientSession,
             method: str,
             url: str,
             data_handler: Callable[[aiohttp.ClientResponse],Awaitable[Optional[Any]]],
@@ -136,7 +139,7 @@ class WebClientAsync:
             if simulate:
                 response = self._fake_response(method, url)
             else:
-                response = await self._session.request(method, url,
+                response = await session.request(method, url,
                         headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
         except aiohttp.ClientConnectionError as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception

@@ -15,9 +15,8 @@ from benjaminhamon_standard_extensions.web.web_status_exception import WebStatus
 class WebClient:
 
 
-    def __init__(self, logger: logging.Logger, session: requests.Session, *, authentication: Optional[str] = None) -> None:
+    def __init__(self, logger: logging.Logger, *, authentication: Optional[str] = None) -> None:
         self._logger = logger
-        self._session = session
         self._authentication = authentication
 
         self.chunk_size: int = 1024 * 1024
@@ -25,6 +24,7 @@ class WebClient:
 
 
     def send_request(self, # pylint: disable = too-many-arguments
+            session: requests.Session,
             method: str,
             url: str,
             *,
@@ -43,11 +43,12 @@ class WebClient:
         if extra_headers is not None:
             headers.update(extra_headers)
 
-        return self._send_request_internal(method, url, handle_data,
+        return self._send_request_internal(session, method, url, handle_data,
                 check = check, headers = extra_headers, parameters = parameters, data = data, data_as_form = data_as_form, simulate = simulate)
 
 
     def upload(self, # pylint: disable = too-many-arguments
+            session: requests.Session,
             method: str,
             url: str,
             local_file_path: str,
@@ -69,11 +70,12 @@ class WebClient:
             headers.update(extra_headers)
 
         with open(local_file_path, mode = "rb") as local_file:
-            return self._send_request_internal(method, url, handle_data,
+            return self._send_request_internal(session, method, url, handle_data,
                     check = check, headers = headers, parameters = parameters, data = local_file, simulate = simulate)
 
 
     def download(self, # pylint: disable = too-many-arguments
+            session: requests.Session,
             url: str,
             local_file_path: str,
             *,
@@ -95,11 +97,12 @@ class WebClient:
         if extra_headers is not None:
             headers.update(extra_headers)
 
-        return self._send_request_internal(method, url, handle_data,
+        return self._send_request_internal(session, method, url, handle_data,
                 check = check, headers = headers, parameters = parameters, simulate = simulate)
 
 
     def _send_request_internal(self, # pylint: disable = too-many-arguments, too-many-locals
+            session: requests.Session,
             method: str,
             url: str,
             data_handler: Callable[[requests.Response],Optional[Any]],
@@ -134,7 +137,7 @@ class WebClient:
             if simulate:
                 response = self._fake_response()
             else:
-                response = self._session.request(method, url,
+                response = session.request(method, url,
                         headers = headers, params = parameters, data = data, files = data_as_form_for_requests,
                         stream = True, timeout = self.timeout.total_seconds())
         except requests.RequestException as exception:
