@@ -20,11 +20,10 @@ class WebApiClient:
 
 
     def __init__(self,
-            logger: logging.Logger, serializer: Serializer, session: requests.Session, *, authentication: Optional[str] = None) -> None:
+            logger: logging.Logger, serializer: Serializer, *, authentication: Optional[str] = None) -> None:
 
         self._logger = logger
         self._serializer = serializer
-        self._session = session
         self._authentication = authentication
 
         self.default_response_success_obj_type: Optional[type] = None
@@ -33,6 +32,7 @@ class WebApiClient:
 
 
     def send_request(self, # pylint: disable = too-many-arguments, too-many-locals
+            session: requests.Session,
             method: str,
             url: str,
             *,
@@ -68,7 +68,7 @@ class WebApiClient:
             if simulate:
                 response = self._fake_response()
             else:
-                response = self._session.request(method, url,
+                response = session.request(method, url,
                         headers = headers, params = parameters, data = serialized_data, files = data_as_form_for_requests,
                         stream = True, timeout = self.timeout.total_seconds())
         except requests.RequestException as exception:

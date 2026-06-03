@@ -1,18 +1,23 @@
 import asyncio
+import datetime
+import os
 import subprocess
-import sys
+import time
+from typing import Dict, List, Optional
 
 import requests
 
 
 class WebsiteRunner:
 
-    def __init__(self, script_path: str, address: str, port: int) -> None:
-        self.script_path = script_path
+
+    def __init__(self, command: List[str], address: str, port: int, environment: Optional[Dict[str,str]] = None) -> None:
+        self.command = command
         self.address = address
         self.port = port
+        self.environment = environment
 
-        self.timeout_seconds = 5
+        self.timeout = datetime.timedelta(seconds = 10)
 
         self._process = None
 
@@ -26,37 +31,48 @@ class WebsiteRunner:
         await self.stop()
 
 
-    async def start(self) -> None:
-        if self._process is not None:
-            raise RuntimeError("Website process is already running")
-
-        command = [ sys.executable, self.script_path, "--address", self.address, "--port", str(self.port) ]
-
-        try:
-            self._process = await asyncio.create_subprocess_exec(*command, stdin = subprocess.DEVNULL)
-        except subprocess.CalledProcessError as exception:
-            raise RuntimeError("Website process failed to start") from exception
-
-        # The method check_is_running can fail if called too quickly, only on Linux apparently.
-        # This sleep should not be necessary as there should be request retries, but for reason it fails regardless.
-        await asyncio.sleep(0.5)
-
-        self.check_is_running()
-
-
     def get_url(self) -> str:
         return "http://" + self.address + ":" + str(self.port)
 
 
-    def check_is_running(self) -> None:
-        if self._process is None or self._process.returncode is not None:
-            raise RuntimeError("Website process is not running")
+    async def start(self) -> None:
+        if self._process is not None:
+            raise RuntimeError("Website process is already running")
+
+        new_environment = os.environ.copy()
+        if self.environment is not None:
+            new_environment.update(self.environment)
 
         try:
-            response = requests.request("GET", self.get_url() + "/", timeout = self.timeout_seconds)
-            response.raise_for_status()
-        except requests.RequestException as exception:
-            raise RuntimeError("Website is not reachable") from exception
+            self._process = await asyncio.create_subprocess_exec(*self.command, env = new_environment, stdin = subprocess.DEVNULL)
+        except subprocess.CalledProcessError as exception:
+            raise RuntimeError("Website process failed to start") from exception
+
+        await self._wait_until_available()
+
+
+    async def _wait_until_available(self) -> None:
+        if self._process is None:
+            raise ValueError("process must not be none")
+
+        start_time = time.time()
+
+        while True:
+            now = time.time()
+            if now > start_time + self.timeout.total_seconds():
+                raise TimeoutError("Waiting for website to be available timed out")
+
+            if self._process.returncode is not None:
+                raise RuntimeError("Process exited (ExitCode: %s)" % self._process.returncode)
+
+            try:
+                response = requests.request("HEAD", self.get_url() + "/", timeout = self.timeout.total_seconds())
+                response.raise_for_status()
+            except requests.RequestException:
+                await asyncio.sleep(1)
+                continue
+
+            break
 
 
     async def stop(self) -> None:
@@ -67,7 +83,7 @@ class WebsiteRunner:
             self._process.terminate()
 
             try:
-                await asyncio.wait_for(self._process.wait(), self.timeout_seconds)
+                await asyncio.wait_for(self._process.wait(), self.timeout.total_seconds())
             except asyncio.TimeoutError:
                 pass
 
@@ -75,7 +91,7 @@ class WebsiteRunner:
             self._process.kill()
 
             try:
-                await asyncio.wait_for(self._process.wait(), self.timeout_seconds)
+                await asyncio.wait_for(self._process.wait(), self.timeout.total_seconds())
             except asyncio.TimeoutError:
                 pass
 

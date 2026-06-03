@@ -21,11 +21,10 @@ class WebApiClientAsync:
 
 
     def __init__(self,
-            logger: logging.Logger, serializer: Serializer, session: aiohttp.ClientSession, *, authentication: Optional[str] = None) -> None:
+            logger: logging.Logger, serializer: Serializer, *, authentication: Optional[str] = None) -> None:
 
         self._logger = logger
         self._serializer = serializer
-        self._session = session
         self._authentication = authentication
 
         self.default_response_success_obj_type: Optional[type] = None
@@ -34,6 +33,7 @@ class WebApiClientAsync:
 
 
     async def send_request(self, # pylint: disable = too-many-arguments, too-many-locals
+            session: aiohttp.ClientSession,
             method: str,
             url: str,
             *,
@@ -68,8 +68,8 @@ class WebApiClientAsync:
             if simulate:
                 response = self._fake_response(method, url)
             else:
-                response = await self._session.request(method, url,
-                        headers = headers, params = parameters, data = data, timeout = self.timeout.total_seconds())
+                response = await session.request(method, url,
+                        headers = headers, params = parameters, data = data, timeout = aiohttp.ClientTimeout(total = self.timeout.total_seconds()))
         except aiohttp.ClientConnectionError as exception:
             raise WebRequestException(request_identifier, method, url, status_code = None, response = None) from exception
 
