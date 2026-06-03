@@ -21,7 +21,7 @@ from .website_runner import WebsiteRunner
 
 
 @pytest_asyncio.fixture(name = "website", scope = "module", loop_scope = "module")
-async def website_fixture() -> AsyncGenerator[WebsiteRunner]:
+async def website_fixture() -> AsyncGenerator[WebsiteRunner, None]:
     python_executable = sys.executable
     script_path = os.path.join(os.path.dirname(__file__), "dummy_website.py")
     address = "localhost"

@@ -23,7 +23,7 @@ from .website_runner import WebsiteRunner
 
 
 @pytest_asyncio.fixture(name = "service", scope = "module", loop_scope = "module")
-async def service_fixture() -> AsyncGenerator[WebsiteRunner]:
+async def service_fixture() -> AsyncGenerator[WebsiteRunner, None]:
     python_executable = sys.executable
     script_path = os.path.join(os.path.dirname(__file__), "dummy_service.py")
     address = "localhost"
