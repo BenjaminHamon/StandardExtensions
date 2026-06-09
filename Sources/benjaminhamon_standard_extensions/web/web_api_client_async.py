@@ -128,8 +128,7 @@ class WebApiClientAsync:
 
 
     def _check_response_status(self, # pylint: disable = too-many-arguments, too-many-positional-arguments
-            request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse, *,
-            response_data: Optional[Any] = None) -> None:
+            request_identifier: str, method: str, url: str, response: aiohttp.ClientResponse, response_data: Optional[Any]) -> None:
 
         try:
             response.raise_for_status()
@@ -195,13 +194,14 @@ class WebApiClientAsync:
                     response_data = exception.response.data
 
             if check: # Check status after checking and handling content to have response data when possible
-                self._check_response_status(request_identifier, method, url, response, response_data = response_data)
+                self._check_response_status(request_identifier, method, url, response, response_data)
 
             return WebResponse(request_identifier, dict(response.headers), response.status, response_data, response)
 
-        except WebContentException:
+        except WebContentException as exception:
             if check: # Status exception takes priority over content exception
-                self._check_response_status(request_identifier, method, url, response, response_data = None)
+                response_data = exception.response.data if exception.response is not None else None
+                self._check_response_status(request_identifier, method, url, response, response_data)
             raise
 
 
