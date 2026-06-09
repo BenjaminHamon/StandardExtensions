@@ -18,7 +18,7 @@ class WebRequestException(Exception):
         self.status_message = http.client.responses[status_code] if status_code is not None else None
         self.response = response
 
-        status_for_exception = "%s (%s)" % (self.status_code, self.status_message) if self.status_code is not None else "Unknown"
+        status_for_exception = "%s (%s)" % (self.status_message, self.status_code) if self.status_code is not None else "Unknown"
         exception_message = "(WebRequestException) %s %s" % (self.method, self.url)
         exception_message += " (Identifier: '%s', Status: '%s')" % (self.request_identifier, status_for_exception)
 
