@@ -1,8 +1,8 @@
 import datetime
 import http
 import logging
-from typing import Any, Dict, Optional
 import uuid
+from typing import Any, Dict, Optional
 
 import requests
 import requests.structures
@@ -20,11 +20,13 @@ class WebApiClient:
 
 
     def __init__(self,
-            logger: logging.Logger, serializer: Serializer, *, authentication: Optional[str] = None) -> None:
+            logger: logging.Logger, serializer: Serializer, *,
+            authentication: Optional[str] = None, extra_headers: Optional[dict] = None) -> None:
 
         self._logger = logger
         self._serializer = serializer
         self._authentication = authentication
+        self._extra_headers = extra_headers
 
         self.default_response_success_obj_type: Optional[type] = None
         self.default_response_error_obj_type: Optional[type] = None
@@ -94,6 +96,8 @@ class WebApiClient:
             "Accept": self._serializer.get_content_type(),
         }
 
+        if self._extra_headers is not None:
+            headers.update(self._extra_headers)
         if extra_headers is not None:
             headers.update(extra_headers)
         if self._authentication is not None:
@@ -180,9 +184,10 @@ class WebApiClient:
 
             return WebResponse(request_identifier, dict(response.headers), response.status_code, response_data, response)
 
-        except WebContentException:
+        except WebContentException as exception:
             if check: # Status exception takes priority over content exception
-                self._check_response_status(request_identifier, method, url, response, response_data = None)
+                response_data = exception.response.data if exception.response is not None else None
+                self._check_response_status(request_identifier, method, url, response, response_data)
             raise
 
 
